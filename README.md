@@ -11,8 +11,9 @@ Currently, just the characteristic direction signature method is implemented.
 You can try out the Go implementation by running:
 
 ```
-$ GOPATH=$(pwd) go get github.com/jtolds/golincs/cmd/cds
-$ bin/cds --input path-to-input.txt
+$ cd $(mktemp -d)
+/tmp/tmp.rqR3ZNiIbn $ GOPATH=$(pwd) go get github.com/jtolds/golincs/cmd/cds
+/tmp/tmp.rqR3ZNiIbn $ bin/cds --input ~/path/to/input.txt
 ```
 
 This package depends heavily on https://github.com/gonum/matrix, which itself
