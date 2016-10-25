@@ -14,3 +14,10 @@ You can try out the Go implementation by running:
 $ GOPATH=$(pwd) go get github.com/jtolds/golincs/cmd/cds
 $ bin/cds --input path-to-input.txt
 ```
+
+This package depends heavily on https://github.com/gonum/matrix, which itself
+may require having BLAS and/or LAPACK installed. Installation instructions for
+the gonum bindings for those dependencies can be found at:
+
+ * https://github.com/gonum/blas
+ * https://github.com/gonum/lapack
