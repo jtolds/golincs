@@ -47,30 +47,25 @@ func Compute(controls, experiments *mat64.Dense, r float64) *mat64.Vector {
 	scores, loadings, explainedVar := pca.NIPALS(&combined, maxComponentsNum,
 		1e5, 1e-4)
 
-	scores = *mat64.DenseCopyOf(scores.T())
-	loadings = *mat64.DenseCopyOf(loadings.T())
-
 	captured_variance := 0.0
-	i := 0
-	for ; i < explainedVar.Len(); i++ {
-		captured_variance += explainedVar.At(i, 0)
+	desiredCols := 1
+	for ; desiredCols <= explainedVar.Len(); desiredCols++ {
+		captured_variance += explainedVar.At(desiredCols-1, 0)
 		if captured_variance > 0.999 {
 			break
 		}
 	}
 
-	_, scoresCols := scores.Dims()
-	_, loadingsCols := loadings.Dims()
-
-	scores = *mat64.DenseCopyOf(scores.View(0, 0, i+1, scoresCols).T())
-	loadings = *mat64.DenseCopyOf(loadings.View(0, 0, i+1, loadingsCols).T())
+	scoresRows, _ := scores.Dims()
+	loadingsRows, _ := loadings.Dims()
+	scores = *mat64.DenseCopyOf(scores.View(0, 0, scoresRows, desiredCols))
+	loadings = *mat64.DenseCopyOf(loadings.View(0, 0, loadingsRows, desiredCols))
 
 	var meanvec mat64.Vector
 	meanvec.SubVec(mat.RowMeans(experiments), mat.RowMeans(controls))
 
-	_, scoresCols = scores.Dims()
-	ctrlScores := scores.View(0, 0, controlCount, scoresCols)
-	expmScores := scores.View(controlCount, 0, experimentCount, scoresCols)
+	ctrlScores := scores.View(0, 0, controlCount, desiredCols)
+	expmScores := scores.View(controlCount, 0, experimentCount, desiredCols)
 
 	var ctrlScoresSquared mat64.Dense
 	ctrlScoresSquared.Mul(ctrlScores.T(), ctrlScores)
