@@ -50,9 +50,6 @@ func NIPALS(data *mat64.Dense, components int, iterations int64,
 
 	obsCount, varCount := data.Dims()
 
-	_ = obsCount
-	_ = varCount
-
 	varMeans := mat.ColumnMeans(data)
 
 	var Xh mat64.Dense
