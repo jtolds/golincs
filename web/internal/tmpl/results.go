@@ -19,7 +19,7 @@ func init() {
 <th>Score</th></tr>
 
 {{ $page := .Page }}
-{{ range .Page.nearest }}
+{{ range .Page.results }}
 <tr>
 <td><a href="/dataset/{{$page.dataset.Id}}/sample/{{.Id}}">{{.Id}}</a></td>
 {{ $sample := . }}

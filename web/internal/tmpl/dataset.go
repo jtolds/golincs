@@ -16,6 +16,9 @@ func init() {
   <li role="presentation" class="active">
     <a href="#topk" aria-controls="topk" role="tab" data-toggle="tab">Top-k</a>
   </li>
+  <li role="presentation">
+    <a href="#bytext" aria-controls="bytext" role="tab" data-toggle="tab">Text</a>
+  </li>
 </ul>
 
 <div class="panel panel-default">
@@ -24,7 +27,7 @@ func init() {
 <div class="tab-content">
   <div role="tabpanel" id="topk" class="tab-pane fade in active">
 
-<form method="POST" action="/dataset/{{.Page.dataset.Id}}/search">
+<form method="POST" action="/dataset/{{.Page.dataset.Id}}/nearest">
 <div class="row">
 <div class="col-md-6">
   <textarea name="up-regulated" class="form-control" rows="3"
@@ -40,11 +43,37 @@ func init() {
 <div class="row">
 <div class="col-md-12 form-inline" style="text-align:right;">
   <div class="form-group">
-    <label for="topkInput"><strong>k = </strong></label>
-    <input type="number" name="limit" class="form-control" id="topkInput"
+    <label for="filters"><strong>filters: </strong></label>
+    <input type="text" name="filters" class="form-control" id="filters" />
+  </div>
+  <div class="form-group">
+    <label for="topkInput1"><strong>k = </strong></label>
+    <input type="number" name="limit" class="form-control" id="topkInput1"
       value="25" />
   </div>
   <input type="hidden" name="search-type" value="topk" />
+  <button type="submit" class="btn btn-default">Search</button>
+</div>
+</div>
+</form>
+
+  </div>
+
+  <div role="tabpanel" id="bytext" class="tab-pane fade in">
+
+<form method="POST" action="/dataset/{{.Page.dataset.Id}}/search">
+<div class="row">
+<div class="col-md-12">
+  <input type="text" name="name" class="form-control" />
+</div>
+</div>
+<div class="row">
+<div class="col-md-12 form-inline" style="text-align:right;">
+  <div class="form-group">
+    <label for="topkInput2"><strong>k = </strong></label>
+    <input type="number" name="limit" class="form-control" id="topkInput2"
+      value="25" />
+  </div>
   <button type="submit" class="btn btn-default">Search</button>
 </div>
 </div>

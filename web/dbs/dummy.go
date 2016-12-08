@@ -4,6 +4,8 @@
 package dbs
 
 import (
+	"strings"
+
 	"github.com/jtolds/webhelp"
 )
 
@@ -35,7 +37,7 @@ type dummySet struct {
 	samples []dummySample
 }
 
-func NewDummyDataSet(name string) DataSet {
+func NewDummyDataset(name string) Dataset {
 	samples := []dummySample{
 		{id: "1", name: "sample 1", tag: "tag 1", offset: 1},
 		{id: "2", name: "sample 2", tag: "tag 2", offset: 2},
@@ -78,14 +80,32 @@ func (d *dummySet) Get(sampleId string) (Sample, error) {
 	return nil, ErrNotFound.New("%#v not found", sampleId)
 }
 
-func (d *dummySet) Nearest(dims []Dimension, limit int) (
+func (d *dummySet) Nearest(dims []Dimension, filter Filter, limit int) (
 	[]ScoredSample, error) {
 	var rv []ScoredSample
 	for i := range d.samples {
 		if i >= limit {
 			break
 		}
-		rv = append(rv, &d.samples[i])
+		if filter == nil || filter(&d.samples[i]) {
+			rv = append(rv, &d.samples[i])
+		}
+	}
+	return rv, nil
+}
+
+func (d *dummySet) Search(name string, filter Filter, limit int) (
+	[]ScoredSample, error) {
+	var rv []ScoredSample
+	for i := range d.samples {
+		if i >= limit {
+			break
+		}
+		if strings.Contains(d.samples[i].Name(), name) {
+			if filter == nil || filter(&d.samples[i]) {
+				rv = append(rv, &d.samples[i])
+			}
+		}
 	}
 	return rv, nil
 }

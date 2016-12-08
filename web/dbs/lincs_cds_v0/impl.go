@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"runtime"
 	"sort"
+	"strings"
 	"syscall"
 	"unsafe"
 
@@ -76,7 +77,8 @@ func (h *maxHeap) Pop() (i interface{}) {
 	return i
 }
 
-func nearest(p pos, n int, points []pos, names []name) []pointDistance {
+func nearest(p pos, n int, points []pos, names []name,
+	filter func(name string) (bool, error)) ([]pointDistance, error) {
 	if n > len(points) {
 		n = len(points)
 	}
@@ -85,6 +87,13 @@ func nearest(p pos, n int, points []pos, names []name) []pointDistance {
 	for i := range points {
 		dist := p.DistanceSquared(&(points[i]))
 		if dist < h[0].Distance {
+			filtered, err := filter(names[i].String())
+			if err != nil {
+				return nil, err
+			}
+			if !filtered {
+				continue
+			}
 			if len(h) >= cap(h) {
 				heap.Pop(&h)
 			}
@@ -94,30 +103,52 @@ func nearest(p pos, n int, points []pos, names []name) []pointDistance {
 				Name:     &(names[i])})
 		}
 	}
-	return h
+	return h, nil
 }
 
-func nearestParallel(p pos, n int, points []pos, names []name) []pointDistance {
-	results := make(chan []pointDistance)
+func nearestParallel(p pos, n int, points []pos, names []name,
+	filter func(name string) (bool, error)) (rv []pointDistance, err error) {
+	type result struct {
+		points []pointDistance
+		err    error
+	}
+	results := make(chan result, *parallelism)
 
 	amount_per_run := len(points) / (*parallelism)
 	for i := 0; i < *parallelism; i++ {
 		go func(i int) {
-			results <- nearest(p, n,
+			points, err := nearest(p, n,
 				points[amount_per_run*i:amount_per_run*(i+1)],
-				names[amount_per_run*i:amount_per_run*(i+1)])
+				names[amount_per_run*i:amount_per_run*(i+1)], filter)
+			results <- result{points: points, err: err}
 		}(i)
 	}
-	rv := <-results
+	r := <-results
+	if r.err != nil {
+		return nil, r.err
+	}
+	for _, point := range r.points {
+		if point.Name != nil {
+			rv = append(rv, point)
+		}
+	}
 	for i := 0; i < *parallelism-1; i++ {
-		rv = append(rv, (<-results)...)
+		r = <-results
+		if r.err != nil {
+			return nil, r.err
+		}
+		for _, point := range r.points {
+			if point.Name != nil {
+				rv = append(rv, point)
+			}
+		}
 	}
 
 	sort.Sort(sort.Reverse((*maxHeap)(&rv)))
-	if len(points) > n {
+	if len(rv) > n {
 		rv = rv[:n]
 	}
-	return rv
+	return rv, nil
 }
 
 type Dataset struct {
@@ -128,7 +159,7 @@ type Dataset struct {
 	names     []name
 }
 
-func New(driver, source, mmapTree string) (dbs.DataSet, error) {
+func New(driver, source, mmapTree string) (dbs.Dataset, error) {
 	if *parallelism < 1 {
 		return nil, fmt.Errorf("invalid parallelism value")
 	}
@@ -222,13 +253,27 @@ func (d *Dataset) Get(sampleId string) (dbs.Sample, error) {
 	return &Sample{meta: meta, d: d}, nil
 }
 
-func (d *Dataset) Nearest(dims []dbs.Dimension, limit int) (
+func (d *Dataset) Nearest(dims []dbs.Dimension, filter dbs.Filter, limit int) (
 	rv []dbs.ScoredSample, err error) {
 	var p pos
 	for _, dim := range dims {
 		p[d.dimByName[dim.Name]] = dim.Value
 	}
-	for _, pd := range nearestParallel(p, limit, d.points, d.names) {
+	newFilter := func(name string) (bool, error) {
+		if filter == nil {
+			return true, nil
+		}
+		meta, err := d.db.GetSampleBySigId(name)
+		if err != nil {
+			return false, err
+		}
+		return filter(&Sample{meta: meta, d: d}), nil
+	}
+	points, err := nearestParallel(p, limit, d.points, d.names, newFilter)
+	if err != nil {
+		return nil, err
+	}
+	for _, pd := range points {
 		if pd.Distance == 0 {
 			continue
 		}
@@ -237,6 +282,39 @@ func (d *Dataset) Nearest(dims []dbs.Dimension, limit int) (
 			return nil, err
 		}
 		rv = append(rv, &Sample{meta: meta, d: d, score: pd.Distance})
+	}
+	return rv, nil
+}
+
+func (d *Dataset) Search(name string, filter dbs.Filter, limit int) (
+	rv []dbs.ScoredSample, err error) {
+	// TODO: make this whole function efficient
+	name = strings.ToLower(name)
+	samples, err := d.db.GetSamples()
+	if err != nil {
+		return nil, err
+	}
+	for _, sample := range samples {
+		if strings.Contains(strings.ToLower(sample.Batch.String), name) ||
+			strings.Contains(strings.ToLower(sample.CellId.String), name) ||
+			strings.Contains(strings.ToLower(sample.PertDesc.String), name) ||
+			strings.Contains(strings.ToLower(sample.PertDose.String), name) ||
+			strings.Contains(strings.ToLower(sample.PertDoseUnit.String), name) ||
+			strings.Contains(strings.ToLower(sample.PertId.String), name) ||
+			strings.Contains(strings.ToLower(sample.PertTime.String), name) ||
+			strings.Contains(strings.ToLower(sample.PertTimeUnit.String), name) ||
+			strings.Contains(strings.ToLower(sample.PertType.String), name) ||
+			strings.Contains(strings.ToLower(sample.ReplicateCount.String), name) ||
+			strings.Contains(strings.ToLower(sample.SigId), name) {
+			s := &Sample{meta: sample, d: d, score: 1}
+			if filter != nil && !filter(s) {
+				continue
+			}
+			rv = append(rv, s)
+			if len(rv) >= limit {
+				break
+			}
+		}
 	}
 	return rv, nil
 }

@@ -31,7 +31,23 @@ type ScoredSample interface {
 	Score() float64
 }
 
-type DataSet interface {
+type Filter func(s Sample) bool
+
+func CombineFilters(filters ...Filter) Filter {
+	if len(filters) == 0 {
+		return nil
+	}
+	return func(s Sample) bool {
+		for _, filter := range filters {
+			if !filter(s) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+type Dataset interface {
 	Name() string
 	Dimensions() int
 	Samples() int
@@ -41,5 +57,7 @@ type DataSet interface {
 	List(ctoken string, limit int) (
 		samples []Sample, ctokenout string, err error)
 	Get(sampleId string) (Sample, error)
-	Nearest(dims []Dimension, limit int) ([]ScoredSample, error)
+	Nearest(dims []Dimension, filter Filter, limit int) (
+		[]ScoredSample, error)
+	Search(name string, filter Filter, limit int) ([]ScoredSample, error)
 }
