@@ -53,9 +53,9 @@ func main() {
 				webhelp.RedirectHandler(fmt.Sprintf("/dataset/%d/", id)),
 			),
 
-			"search": webhelp.ExactMethod("POST",
+			"search": webhelp.RequireMethod("POST",
 				webhelp.ExactPath(http.HandlerFunc(endpoints.Search))),
-			"nearest": webhelp.ExactMethod("POST",
+			"nearest": webhelp.RequireMethod("POST",
 				webhelp.ExactPath(http.HandlerFunc(endpoints.Nearest))),
 		}
 	}
