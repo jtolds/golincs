@@ -3,8 +3,7 @@
 
 package tmpl
 
-func init() {
-	register("sample", `{{ template "header" . }}
+var _ = T.MustParse(`{{ template "header" . }}
 
 <h1>Dataset: <a href="/dataset/{{.Page.dataset.Id}}">{{.Page.dataset.Name}}</a></h1>
 <h2>Sample: {{.Page.sample.Name}}</h2>
@@ -49,4 +48,3 @@ func init() {
 </div>
 
 {{ template "footer" . }}`)
-}

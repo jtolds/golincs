@@ -3,8 +3,7 @@
 
 package tmpl
 
-func init() {
-	register("dataset", `{{ template "header" . }}
+var _ = T.MustParse(`{{ template "header" . }}
 
 <h1>Dataset: {{.Page.dataset.Name}}</h1>
 <p>Dataset is associated with {{ .Page.dataset.Dimensions }} dimensions
@@ -106,4 +105,3 @@ func init() {
 </div>
 
 {{ template "footer" . }}`)
-}

@@ -3,8 +3,7 @@
 
 package tmpl
 
-func init() {
-	register("header", `<!DOCTYPE html>
+var _ = T.MustParse(`<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -48,4 +47,3 @@ func init() {
       </div>
     </nav>
     <div class="container main">`)
-}
