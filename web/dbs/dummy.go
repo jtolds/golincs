@@ -6,7 +6,7 @@ package dbs
 import (
 	"strings"
 
-	"github.com/jtolds/webhelp"
+	"gopkg.in/webhelp.v1/wherr"
 )
 
 type dummySample struct {
@@ -62,7 +62,7 @@ func (d *dummySet) TagNames() []string {
 func (d *dummySet) List(ctoken string, limit int) (
 	samples []Sample, ctokenout string, err error) {
 	if limit < len(d.samples) {
-		return nil, "", webhelp.ErrBadRequest.New("limit too small")
+		return nil, "", wherr.BadRequest.New("limit too small")
 	}
 	var rv []Sample
 	for i := range d.samples {

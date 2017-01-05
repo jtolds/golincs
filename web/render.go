@@ -7,7 +7,8 @@ import (
 	"net/http"
 
 	"github.com/jtolds/golincs/web/internal/tmpl"
-	"github.com/jtolds/webhelp"
+	"gopkg.in/webhelp.v1/wherr"
+	"gopkg.in/webhelp.v1/whfatal"
 )
 
 type PageCtx struct {
@@ -17,14 +18,14 @@ type PageCtx struct {
 func Render(templateName string, page map[string]interface{}) {
 	t := tmpl.Templates.Lookup(templateName)
 	if t == nil {
-		webhelp.FatalError(webhelp.ErrInternalServerError.New(
+		whfatal.Error(wherr.InternalServerError.New(
 			"no template %#v registered", templateName))
 	}
-	webhelp.Fatal(func(w http.ResponseWriter, r *http.Request) {
+	whfatal.Fatal(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		err := t.Execute(w, PageCtx{Page: page})
 		if err != nil {
-			webhelp.HandleError(w, r, err)
+			wherr.Handle(w, r, err)
 		}
 	})
 }

@@ -11,7 +11,11 @@ import (
 
 	"github.com/jtolds/golincs/web/dbs"
 	"github.com/jtolds/golincs/web/dbs/lincs_cds_v0"
-	"github.com/jtolds/webhelp"
+	"gopkg.in/webhelp.v1/whfatal"
+	"gopkg.in/webhelp.v1/whlog"
+	"gopkg.in/webhelp.v1/whmux"
+	"gopkg.in/webhelp.v1/whredir"
+	"gopkg.in/webhelp.v1/whroute"
 )
 
 var (
@@ -23,7 +27,7 @@ var (
 	spatialDB = flag.String("spatial", "/home/jt/school/bio/tree-mmap",
 		"spatial db path")
 
-	sampleId = webhelp.NewStringArgMux()
+	sampleId = whmux.NewStringArg()
 )
 
 func main() {
@@ -34,7 +38,7 @@ func main() {
 		panic(err)
 	}
 
-	datasetMux := webhelp.DirMux{"": webhelp.RedirectHandler("/")}
+	datasetMux := whmux.Dir{"": whredir.RedirectHandler("/")}
 	datasets := []dbs.Dataset{dbs.NewDummyDataset("dummy dataset 1"), lincs_cds}
 	for id, dataset := range datasets {
 		endpoints := NewEndpoints(struct {
@@ -42,26 +46,26 @@ func main() {
 			Id int
 		}{Dataset: dataset, Id: id})
 
-		datasetMux[fmt.Sprint(id)] = webhelp.DirMux{
-			"": webhelp.Exact(http.HandlerFunc(endpoints.Dataset)),
+		datasetMux[fmt.Sprint(id)] = whmux.Dir{
+			"": whmux.Exact(http.HandlerFunc(endpoints.Dataset)),
 
 			"sample": sampleId.ShiftOpt(
-				webhelp.DirMux{
-					"":        webhelp.Exact(http.HandlerFunc(endpoints.Sample)),
-					"similar": webhelp.Exact(http.HandlerFunc(endpoints.Similar)),
+				whmux.Dir{
+					"":        whmux.Exact(http.HandlerFunc(endpoints.Sample)),
+					"similar": whmux.Exact(http.HandlerFunc(endpoints.Similar)),
 				},
-				webhelp.RedirectHandler(fmt.Sprintf("/dataset/%d/", id)),
+				whredir.RedirectHandler(fmt.Sprintf("/dataset/%d/", id)),
 			),
 
-			"search": webhelp.RequireMethod("POST",
-				webhelp.ExactPath(http.HandlerFunc(endpoints.Search))),
-			"nearest": webhelp.RequireMethod("POST",
-				webhelp.ExactPath(http.HandlerFunc(endpoints.Nearest))),
+			"search": whmux.RequireMethod("POST",
+				whmux.ExactPath(http.HandlerFunc(endpoints.Search))),
+			"nearest": whmux.RequireMethod("POST",
+				whmux.ExactPath(http.HandlerFunc(endpoints.Nearest))),
 		}
 	}
 
-	routes := webhelp.LoggingHandler(webhelp.FatalHandler(webhelp.DirMux{
-		"": webhelp.Exact(http.HandlerFunc(
+	routes := whlog.LogRequests(whlog.Default, whfatal.Catch(whmux.Dir{
+		"": whmux.Exact(http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
 				Render("datasets", map[string]interface{}{"datasets": datasets})
 			})),
@@ -69,9 +73,9 @@ func main() {
 	}))
 	switch flag.Arg(0) {
 	case "serve":
-		panic(webhelp.ListenAndServe(*listenAddr, routes))
+		panic(whlog.ListenAndServe(*listenAddr, routes))
 	case "routes":
-		webhelp.PrintRoutes(os.Stdout, routes)
+		whroute.PrintRoutes(os.Stdout, routes)
 	default:
 		fmt.Printf("Usage: %s <serve|routes>\n", os.Args[0])
 	}
