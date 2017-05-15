@@ -20,32 +20,32 @@ var _ = T.MustParse(`{{ template "header" . }}
 </tr></table>
 
 <ul class="nav nav-tabs">
-  <li role="presentation" class="active">
-    <a>Data</a>
+  <li role="presentation">
+    <a href="/dataset/{{.Page.dataset.Id}}/sample/{{.Page.sample.Id}}">Data</a>
   </li>
   <li role="presentation">
     <a href="/dataset/{{.Page.dataset.Id}}/sample/{{.Page.sample.Id}}/similar">Similar Samples</a>
   </li>
-  <li role="presentation">
-    <a href="/dataset/{{.Page.dataset.Id}}/sample/{{.Page.sample.Id}}/enriched">Enriched Genesets</a>
+  <li role="presentation" class="active">
+    <a>Enriched Samples</a>
   </li>
 </ul>
 
 <div class="panel panel-default">
   <div class="panel-body">
 
-<table class="table table-striped">
-<tr>
-  <th>Dimension</th>
-  <th>Value</th>
-</tr>
-{{ range .Page.sample.Data }}
-<tr>
-  <td>{{.Name}}</td>
-  <td>{{.Value}}</td>
-</tr>
-{{ end }}
-</table>
+  <table class="table table-striped">
+
+  <tr>
+    <th>Id</th>
+    <th>Name</th>
+    {{ range .Page.dataset.TagNames }}
+    <th>{{.}}</th>
+    {{end}}
+    <th>Score</th>
+  </tr>
+
+  </table>
 
   </div>
 </div>

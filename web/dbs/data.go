@@ -60,4 +60,7 @@ type Dataset interface {
 	Nearest(dims []Dimension, filter Filter, limit int) (
 		[]ScoredSample, error)
 	Search(name string, filter Filter, limit int) ([]ScoredSample, error)
+	Enriched(dims []Dimension, limit int) ([]GeneSet, error)
 }
+
+type GeneSet interface{}

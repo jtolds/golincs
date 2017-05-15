@@ -111,3 +111,7 @@ func (d *dummySet) Search(name string, filter Filter, limit int) (
 }
 
 func (d *dummySet) DimMax() float64 { return 10 }
+
+func (d *dummySet) Enriched(dims []Dimension, limit int) ([]GeneSet, error) {
+	return nil, nil
+}

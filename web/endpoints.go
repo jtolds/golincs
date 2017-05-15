@@ -71,9 +71,53 @@ func (a *Endpoints) Similar(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *Endpoints) Nearest(w http.ResponseWriter, r *http.Request) {
+func (a *Endpoints) Enriched(w http.ResponseWriter, r *http.Request) {
+	sample := a.sample(whcompat.Context(r))
+	dims, err := sample.Data()
+	if err != nil {
+		whfatal.Error(err)
+	}
+	enriched, err := a.data.Enriched(dims,
+		whparse.OptInt(r.FormValue("limit"), 30))
+	if err != nil {
+		whfatal.Error(err)
+	}
+	Render("enriched", map[string]interface{}{
+		"dataset":  a.data,
+		"sample":   sample,
+		"enriched": enriched,
+	})
+}
+
+func (a *Endpoints) parseDims(r *http.Request) ([]dbs.Dimension, error) {
 	up_regulated_strings := strings.Fields(r.FormValue("up-regulated"))
 	down_regulated_strings := strings.Fields(r.FormValue("down-regulated"))
+	total := len(up_regulated_strings) + len(down_regulated_strings)
+	if total == 0 {
+		return nil, wherr.BadRequest.New("no dimensions provided")
+	}
+	seen := make(map[string]bool, total)
+	dims := make([]dbs.Dimension, 0, total)
+	for _, name := range up_regulated_strings {
+		if seen[name] {
+			return nil, wherr.BadRequest.New(
+				"dimension %#v provided twice", name)
+		}
+		seen[name] = true
+		dims = append(dims, dbs.Dimension{Name: name, Value: a.data.DimMax()})
+	}
+	for _, name := range down_regulated_strings {
+		if seen[name] {
+			return nil, wherr.BadRequest.New(
+				"dimension %#v provided twice", name)
+		}
+		seen[name] = true
+		dims = append(dims, dbs.Dimension{Name: name, Value: -a.data.DimMax()})
+	}
+	return dims, nil
+}
+
+func (a *Endpoints) Nearest(w http.ResponseWriter, r *http.Request) {
 	var filters []dbs.Filter
 	for _, filter_string := range strings.Fields(r.FormValue("filters")) {
 		parts := strings.Split(filter_string, "=")
@@ -87,28 +131,11 @@ func (a *Endpoints) Nearest(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	total := len(up_regulated_strings) + len(down_regulated_strings)
-	if total == 0 {
-		whfatal.Error(wherr.BadRequest.New("no dimensions provided"))
+	dims, err := a.parseDims(r)
+	if err != nil {
+		whfatal.Error(err)
 	}
-	seen := make(map[string]bool, total)
-	dims := make([]dbs.Dimension, 0, total)
-	for _, name := range up_regulated_strings {
-		if seen[name] {
-			whfatal.Error(wherr.BadRequest.New(
-				"dimension %#v provided twice", name))
-		}
-		seen[name] = true
-		dims = append(dims, dbs.Dimension{Name: name, Value: a.data.DimMax()})
-	}
-	for _, name := range down_regulated_strings {
-		if seen[name] {
-			whfatal.Error(wherr.BadRequest.New(
-				"dimension %#v provided twice", name))
-		}
-		seen[name] = true
-		dims = append(dims, dbs.Dimension{Name: name, Value: -a.data.DimMax()})
-	}
+
 	nearest, err := a.data.Nearest(dims, dbs.CombineFilters(filters...),
 		whparse.OptInt(r.FormValue("limit"), 30))
 	if err != nil {
@@ -118,6 +145,22 @@ func (a *Endpoints) Nearest(w http.ResponseWriter, r *http.Request) {
 	Render("results", map[string]interface{}{
 		"dataset": a.data,
 		"results": nearest,
+	})
+}
+
+func (a *Endpoints) EnrichedSearch(w http.ResponseWriter, r *http.Request) {
+	dims, err := a.parseDims(r)
+	if err != nil {
+		whfatal.Error(err)
+	}
+	enriched, err := a.data.Enriched(dims,
+		whparse.OptInt(r.FormValue("limit"), 30))
+	if err != nil {
+		whfatal.Error(err)
+	}
+	Render("enriched_results", map[string]interface{}{
+		"dataset":  a.data,
+		"enriched": enriched,
 	})
 }
 

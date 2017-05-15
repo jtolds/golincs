@@ -412,3 +412,8 @@ func (d dimensionNameSorter) Swap(i, j int) { d[i], d[j] = d[j], d[i] }
 func (d dimensionNameSorter) Less(i, j int) bool {
 	return d[i].Name < d[j].Name
 }
+
+func (ds *Dataset) Enriched(dims []dbs.Dimension, limit int) (
+	[]dbs.GeneSet, error) {
+	return nil, nil
+}

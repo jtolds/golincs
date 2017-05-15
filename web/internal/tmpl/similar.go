@@ -26,6 +26,9 @@ var _ = T.MustParse(`{{ template "header" . }}
   <li role="presentation" class="active">
     <a>Similar Samples</a>
   </li>
+  <li role="presentation">
+    <a href="/dataset/{{.Page.dataset.Id}}/sample/{{.Page.sample.Id}}/enriched">Enriched Samples</a>
+  </li>
 </ul>
 
 <div class="panel panel-default">

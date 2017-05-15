@@ -59,8 +59,9 @@ func main() {
 
 			"sample": sampleId.ShiftOpt(
 				whmux.Dir{
-					"":        whmux.Exact(http.HandlerFunc(endpoints.Sample)),
-					"similar": whmux.Exact(http.HandlerFunc(endpoints.Similar)),
+					"":         whmux.Exact(http.HandlerFunc(endpoints.Sample)),
+					"similar":  whmux.Exact(http.HandlerFunc(endpoints.Similar)),
+					"enriched": whmux.Exact(http.HandlerFunc(endpoints.Enriched)),
 				},
 				whredir.RedirectHandler(fmt.Sprintf("/dataset/%d/", id)),
 			),
@@ -69,6 +70,8 @@ func main() {
 				whmux.ExactPath(http.HandlerFunc(endpoints.Search))),
 			"nearest": whmux.RequireMethod("POST",
 				whmux.ExactPath(http.HandlerFunc(endpoints.Nearest))),
+			"enriched": whmux.RequireMethod("POST",
+				whmux.ExactPath(http.HandlerFunc(endpoints.EnrichedSearch))),
 		}
 	}
 

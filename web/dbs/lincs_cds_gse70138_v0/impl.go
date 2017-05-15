@@ -359,3 +359,8 @@ func (d *Dataset) TagNames() []string {
 	return []string{"batch", "cell_id", "pert_desc", "pert_dose",
 		"pert_id", "pert_time", "pert_type", "replicate_count"}
 }
+
+func (d *Dataset) Enriched(dims []dbs.Dimension, limit int) (
+	[]dbs.GeneSet, error) {
+	return nil, nil
+}

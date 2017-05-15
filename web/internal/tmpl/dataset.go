@@ -16,6 +16,9 @@ var _ = T.MustParse(`{{ template "header" . }}
     <a href="#topk" aria-controls="topk" role="tab" data-toggle="tab">Top-k</a>
   </li>
   <li role="presentation">
+    <a href="#enriched" aria-controls="enriched" role="tab" data-toggle="tab">Enriched</a>
+  </li>
+  <li role="presentation">
     <a href="#bytext" aria-controls="bytext" role="tab" data-toggle="tab">Text</a>
   </li>
 </ul>
@@ -57,7 +60,34 @@ var _ = T.MustParse(`{{ template "header" . }}
 </form>
 
   </div>
+  <div role="tabpanel" id="enriched" class="tab-pane fade in">
 
+<form method="POST" action="/dataset/{{.Page.dataset.Id}}/enriched">
+<div class="row">
+<div class="col-md-6">
+  <textarea name="up-regulated" class="form-control" rows="3"
+      placeholder="up-regulated dimensions (whitespace separated)"></textarea>
+  <br/>
+</div>
+<div class="col-md-6">
+  <textarea name="down-regulated" class="form-control" rows="3"
+      placeholder="down-regulated dimensions (whitespace separated)"></textarea>
+  <br/>
+</div>
+</div>
+<div class="row">
+<div class="col-md-12 form-inline" style="text-align:right;">
+  <div class="form-group">
+    <label for="enrichedInput1"><strong>k = </strong></label>
+    <input type="number" name="limit" class="form-control" id="enrichedInput1"
+      value="25" />
+  </div>
+  <button type="submit" class="btn btn-default">Search</button>
+</div>
+</div>
+</form>
+
+  </div>
   <div role="tabpanel" id="bytext" class="tab-pane fade in">
 
 <form method="POST" action="/dataset/{{.Page.dataset.Id}}/search">
