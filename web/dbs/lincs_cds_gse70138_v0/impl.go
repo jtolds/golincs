@@ -1,7 +1,7 @@
 // Copyright (C) 2016 JT Olds
 // See LICENSE for copying information
 
-package lincs_cds_v0
+package lincs_cds_gse70138_v0
 
 import (
 	"container/heap"
@@ -17,7 +17,7 @@ import (
 	"unsafe"
 
 	"github.com/jtolds/golincs/web/dbs"
-	"github.com/jtolds/golincs/web/dbs/lincs_cds_v0/metadb"
+	"github.com/jtolds/golincs/web/dbs/lincs_cds_gse70138_v0/metadb"
 )
 
 var (
@@ -227,7 +227,7 @@ func New(driver, source, mmapTree string) (dbs.Dataset, error) {
 	return ds, nil
 }
 
-func (d *Dataset) Name() string    { return "LINCS CDS v0" }
+func (d *Dataset) Name() string    { return "LINCS Phase 2 CDS v0" }
 func (d *Dataset) Dimensions() int { return dimensions }
 func (d *Dataset) Samples() int    { return samples }
 func (d *Dataset) DimMax() float64 { return 1 }

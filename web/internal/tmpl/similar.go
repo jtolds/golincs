@@ -35,6 +35,7 @@ var _ = T.MustParse(`{{ template "header" . }}
 
   <tr>
     <th>Id</th>
+    <th>Name</th>
     {{ range .Page.dataset.TagNames }}
     <th>{{.}}</th>
     {{end}}
@@ -45,6 +46,7 @@ var _ = T.MustParse(`{{ template "header" . }}
   {{ range .Page.nearest }}
   <tr>
     <td><a href="/dataset/{{$page.dataset.Id}}/sample/{{.Id}}/similar">{{.Id}}</a></td>
+    <td>{{.Name}}</td>
     {{ $sample := . }}
     {{ range $page.dataset.TagNames }}
       <td>{{index $sample.Tags .}}</td>

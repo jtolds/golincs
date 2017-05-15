@@ -12,6 +12,7 @@ var _ = T.MustParse(`{{ template "header" . }}
 <table class="table table-striped">
 <tr>
 <th>Id</th>
+<th>Name</th>
 {{ range .Page.dataset.TagNames }}
 <th>{{.}}</th>
 {{end}}
@@ -21,6 +22,7 @@ var _ = T.MustParse(`{{ template "header" . }}
 {{ range .Page.results }}
 <tr>
 <td><a href="/dataset/{{$page.dataset.Id}}/sample/{{.Id}}">{{.Id}}</a></td>
+<td>{{.Name}}</td>
 {{ $sample := . }}
 {{ range $page.dataset.TagNames }}
 <td>{{index $sample.Tags .}}</td>

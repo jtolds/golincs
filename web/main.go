@@ -10,7 +10,8 @@ import (
 	"os"
 
 	"github.com/jtolds/golincs/web/dbs"
-	"github.com/jtolds/golincs/web/dbs/lincs_cds_v0"
+	"github.com/jtolds/golincs/web/dbs/lincs_cds_gse70138_v0"
+	"github.com/jtolds/golincs/web/dbs/lincs_gse92742_v0"
 	"gopkg.in/webhelp.v1/whfatal"
 	"gopkg.in/webhelp.v1/whlog"
 	"gopkg.in/webhelp.v1/whmux"
@@ -21,11 +22,11 @@ import (
 var (
 	listenAddr = flag.String("addr", ":8080", "address to listen on")
 
-	dbDriver = flag.String("db-driver", "sqlite3", "database driver")
-	dbPath   = flag.String("db", "/home/jt/school/bio/tree-metadata.sqlite3",
-		"database")
-	spatialDB = flag.String("spatial", "/home/jt/school/bio/tree-mmap",
-		"spatial db path")
+	dbDriver    = flag.String("db-driver", "sqlite3", "database driver")
+	dbPath70138 = flag.String("db70138",
+		"/home/jt/school/bio/tree-metadata-70138.sqlite3", "database")
+	spatialDB70138 = flag.String("spatial70138",
+		"/home/jt/school/bio/tree-mmap-70138", "spatial db path")
 
 	sampleId = whmux.NewStringArg()
 )
@@ -33,13 +34,20 @@ var (
 func main() {
 	flag.Parse()
 
-	lincs_cds, err := lincs_cds_v0.New(*dbDriver, *dbPath, *spatialDB)
+	lincs_70138, err := lincs_cds_gse70138_v0.New(*dbDriver, *dbPath70138,
+		*spatialDB70138)
+	if err != nil {
+		panic(err)
+	}
+
+	lincs_92742, err := lincs_gse92742_v0.New()
 	if err != nil {
 		panic(err)
 	}
 
 	datasetMux := whmux.Dir{"": whredir.RedirectHandler("/")}
-	datasets := []dbs.Dataset{dbs.NewDummyDataset("dummy dataset 1"), lincs_cds}
+	datasets := []dbs.Dataset{dbs.NewDummyDataset("dummy dataset 1"),
+		lincs_70138, lincs_92742}
 	for id, dataset := range datasets {
 		endpoints := NewEndpoints(struct {
 			dbs.Dataset
