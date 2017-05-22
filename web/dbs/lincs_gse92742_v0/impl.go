@@ -9,14 +9,11 @@ import (
 	"flag"
 	"fmt"
 	"math"
-	"os"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
-	"syscall"
-	"unsafe"
 
+	"github.com/jtolds/golincs/mmm"
 	"github.com/jtolds/golincs/web/dbs"
 	"github.com/spacemonkeygo/errors"
 )
@@ -26,22 +23,15 @@ var (
 		"path to connect to the metadata db")
 	driver = flag.String("gse92742.db_driver", "sqlite3", "database driver")
 	data   = flag.String("gse92742.data",
-		"/home/jt/school/bio/gse92742/filtered.mmap", "path to the data")
-)
-
-const (
-	float32Size = int(unsafe.Sizeof(float32(0)))
+		"/home/jt/school/bio/gse92742/filtered-unit.mmap", "path to the data")
 )
 
 type Dataset struct {
-	db                  *sql.DB
-	tx                  *sql.Tx
-	data_fh             *os.File
-	data_raw            []byte
-	data                []float32
-	samples, dimensions int
-	dimensionMap        []string
-	idxMap              map[string]int
+	db           *sql.DB
+	tx           *sql.Tx
+	mmm          *mmm.Handle
+	dimensionMap []string
+	idxMap       map[string]int
 }
 
 func New() (*Dataset, error) {
@@ -64,55 +54,52 @@ func New() (*Dataset, error) {
 	}
 	ds.tx = tx
 
-	err = tx.QueryRow("SELECT COUNT(*) FROM signatures").Scan(&ds.samples)
+	var samples, dimensions int64
+
+	err = tx.QueryRow("SELECT COUNT(*) FROM signatures").Scan(&samples)
 	if err != nil {
 		return nil, err
 	}
-	err = tx.QueryRow("SELECT COUNT(*) FROM dimensions").Scan(&ds.dimensions)
+	err = tx.QueryRow("SELECT COUNT(*) FROM dimensions").Scan(&dimensions)
 	if err != nil {
 		return nil, err
 	}
 
-	fh, err := os.Open(*data)
+	fh, err := mmm.Open(*data)
 	if err != nil {
 		return nil, err
 	}
-	ds.data_fh = fh
+	ds.mmm = fh
 
-	data_raw, err := syscall.Mmap(int(fh.Fd()), 0,
-		float32Size*ds.samples*ds.dimensions,
-		syscall.PROT_READ, syscall.MAP_SHARED)
-	if err != nil {
-		return nil, err
+	if int64(ds.mmm.Rows()) != samples || int64(ds.mmm.Cols()) != dimensions {
+		return nil, fmt.Errorf("invalid dimensions")
 	}
-	ds.data_raw = data_raw
 
-	header := *(*reflect.SliceHeader)(unsafe.Pointer(&data_raw))
-	header.Len /= float32Size
-	header.Cap /= float32Size
-	ds.data = *(*[]float32)(unsafe.Pointer(&header))
-
-	ds.dimensionMap = make([]string, ds.dimensions)
-	ds.idxMap = make(map[string]int, ds.dimensions)
-	rows, err := tx.Query("SELECT idx, pr_gene_id FROM dimensions")
+	ds.dimensionMap = make([]string, dimensions)
+	ds.idxMap = make(map[string]int, dimensions)
+	rows, err := tx.Query("SELECT id, pr_gene_id FROM dimensions")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var idx int
+		var id uint32
 		var gene_id string
-		err = rows.Scan(&idx, &gene_id)
+		err = rows.Scan(&id, &gene_id)
 		if err != nil {
 			return nil, err
+		}
+
+		idx, found := fh.ColIdxById(id)
+		if !found {
+			return nil, fmt.Errorf("missing id: %v", id)
 		}
 
 		var gene_symbol string
 		err := tx.QueryRow("SELECT pr_gene_symbol FROM pr_gene WHERE "+
 			"pr_gene_id = ?", gene_id).Scan(&gene_symbol)
 		if err != nil {
-			fmt.Println("gene_id", gene_id)
 			return nil, err
 		}
 
@@ -130,13 +117,9 @@ func New() (*Dataset, error) {
 
 func (ds *Dataset) Close() error {
 	var errs errors.ErrorGroup
-	if ds.data_raw != nil {
-		errs.Add(syscall.Munmap(ds.data_raw))
-		ds.data_raw = nil
-	}
-	if ds.data_fh != nil {
-		errs.Add(ds.data_fh.Close())
-		ds.data_fh = nil
+	if ds.mmm != nil {
+		errs.Add(ds.mmm.Close())
+		ds.mmm = nil
 	}
 	if ds.tx != nil {
 		errs.Add(ds.tx.Rollback())
@@ -150,7 +133,7 @@ func (ds *Dataset) Close() error {
 }
 
 func (ds *Dataset) getValues(sample_idx int) []float32 {
-	return ds.data[ds.dimensions*sample_idx : ds.dimensions*(sample_idx+1)]
+	return ds.mmm.RowByIdx(sample_idx)
 }
 
 func (ds *Dataset) Name() string {
@@ -158,11 +141,11 @@ func (ds *Dataset) Name() string {
 }
 
 func (ds *Dataset) Dimensions() int {
-	return ds.dimensions
+	return ds.mmm.Cols()
 }
 
 func (ds *Dataset) Samples() int {
-	return ds.samples
+	return ds.mmm.Rows()
 }
 
 func (ds *Dataset) DimMax() float64 { return 1 }
@@ -207,7 +190,7 @@ func (ds *Dataset) List(ctoken string, limit int) (
 		}
 	}
 
-	for i := offset; i < offset+limit && i < ds.samples; i++ {
+	for i := offset; i < offset+limit && i < ds.mmm.Rows(); i++ {
 		s, err := ds.getByIdx(i)
 		if err != nil {
 			return nil, "", err
@@ -245,8 +228,12 @@ func (ds *Dataset) loadSample(sig_id string, idx int) (*sample, error) {
 
 func (ds *Dataset) getByIdx(idx int) (*sample, error) {
 	var sig_id string
-	err := ds.tx.QueryRow("SELECT sig_id FROM signatures WHERE idx = ?",
-		idx).Scan(&sig_id)
+	id, found := ds.mmm.RowIdByIdx(idx)
+	if !found {
+		return nil, fmt.Errorf("not found")
+	}
+	err := ds.tx.QueryRow("SELECT sig_id FROM signatures WHERE id = ?", id).
+		Scan(&sig_id)
 	if err != nil {
 		return nil, err
 	}
@@ -254,11 +241,15 @@ func (ds *Dataset) getByIdx(idx int) (*sample, error) {
 }
 
 func (ds *Dataset) Get(sampleId string) (dbs.Sample, error) {
-	var idx int
-	err := ds.tx.QueryRow("SELECT idx FROM signatures WHERE sig_id = ?",
-		sampleId).Scan(&idx)
+	var id uint32
+	err := ds.tx.QueryRow("SELECT id FROM signatures WHERE sig_id = ?",
+		sampleId).Scan(&id)
 	if err != nil {
 		return nil, err
+	}
+	idx, found := ds.mmm.RowIdxById(id)
+	if !found {
+		return nil, fmt.Errorf("invalid id")
 	}
 	return ds.loadSample(sampleId, idx)
 }
@@ -300,17 +291,29 @@ func distSquared(p1, p2 []float32) (sum float32) {
 	return sum
 }
 
+func normalize(vector []float32) {
+	var squared_sum float64
+	for _, val := range vector {
+		squared_sum += float64(val) * float64(val)
+	}
+	dist := math.Sqrt(squared_sum)
+	for i := range vector {
+		vector[i] = float32(float64(vector[i]) / dist)
+	}
+}
+
 func (ds *Dataset) Nearest(dims []dbs.Dimension, filter dbs.Filter,
 	limit int) ([]dbs.ScoredSample, error) {
 
-	query := make([]float32, ds.dimensions)
+	query := make([]float32, ds.mmm.Cols())
 	for _, dim := range dims {
 		query[ds.idxMap[dim.Name]] = float32(dim.Value)
 	}
+	normalize(query)
 
 	h := make(maxHeap, 0, limit)
 	heap.Push(&h, sampleDist{idx: -1, dist: float32(math.Inf(1))})
-	for i := 0; i < ds.samples || i < 1; i++ {
+	for i := 0; i < ds.mmm.Rows() || i < 1; i++ {
 		dist := distSquared(query, ds.getValues(i))
 		if dist >= h[0].dist || dist == 0 {
 			continue
