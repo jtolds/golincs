@@ -1,4 +1,4 @@
-// Copyright (C) 2016 JT Olds
+// Copyright (C) 2017 JT Olds
 // See LICENSE for copying information
 
 package mmm
@@ -54,7 +54,7 @@ type Handle struct {
 	rowIdToIdx, colIdToIdx map[uint32]int
 }
 
-func Create(path string, rows, cols int64) (*Handle, error) {
+func Create(path string, rows, cols int64) (rv *Handle, err error) {
 	if rows > int64(maxUint32) || cols > int64(maxUint32) {
 		return nil, fmt.Errorf("rows or cols too large")
 	}
@@ -69,7 +69,12 @@ func Create(path string, rows, cols int64) (*Handle, error) {
 		return nil, err
 	}
 	h := &Handle{fh: fh}
-	defer h.Close()
+	defer func() {
+		h.Close()
+		if err != nil {
+			os.Remove(path)
+		}
+	}()
 
 	_, err = fh.Seek(fullSize-1, 0)
 	if err != nil {
