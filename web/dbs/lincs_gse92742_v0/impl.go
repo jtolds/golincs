@@ -23,7 +23,8 @@ var (
 		"path to connect to the metadata db")
 	driver = flag.String("gse92742.db_driver", "sqlite3", "database driver")
 	data   = flag.String("gse92742.data",
-		"/home/jt/school/bio/gse92742/filtered-unit.mmap", "path to the data")
+		"/home/jt/school/bio/gse92742/filtered-unit-sh_and_oe.mmap",
+		"path to the data")
 )
 
 type Dataset struct {
@@ -54,29 +55,14 @@ func New() (*Dataset, error) {
 	}
 	ds.tx = tx
 
-	var samples, dimensions int64
-
-	err = tx.QueryRow("SELECT COUNT(*) FROM signatures").Scan(&samples)
-	if err != nil {
-		return nil, err
-	}
-	err = tx.QueryRow("SELECT COUNT(*) FROM dimensions").Scan(&dimensions)
-	if err != nil {
-		return nil, err
-	}
-
 	fh, err := mmm.Open(*data)
 	if err != nil {
 		return nil, err
 	}
 	ds.mmm = fh
 
-	if int64(ds.mmm.Rows()) != samples || int64(ds.mmm.Cols()) != dimensions {
-		return nil, fmt.Errorf("invalid dimensions")
-	}
-
-	ds.dimensionMap = make([]string, dimensions)
-	ds.idxMap = make(map[string]int, dimensions)
+	ds.dimensionMap = make([]string, fh.Cols())
+	ds.idxMap = make(map[string]int, fh.Cols())
 	rows, err := tx.Query("SELECT id, pr_gene_id FROM dimensions")
 	if err != nil {
 		return nil, err
@@ -93,7 +79,7 @@ func New() (*Dataset, error) {
 
 		idx, found := fh.ColIdxById(id)
 		if !found {
-			return nil, fmt.Errorf("missing id: %v", id)
+			continue
 		}
 
 		var gene_symbol string
