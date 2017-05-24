@@ -4,7 +4,9 @@
 package main
 
 import (
+	"bufio"
 	"flag"
+	"os"
 	"strconv"
 	"strings"
 
@@ -12,13 +14,62 @@ import (
 )
 
 var (
-	rowsFlag = flag.String("rows", "", "comma-separated list of row ids. "+
-		"will be removed, unless list starts with a '+'")
-	colsFlag = flag.String("cols", "", "comma-separated list of col ids. "+
-		"will be removed, unless list starts with a '+'")
-	inputPath  = flag.String("i", "", "input path")
-	outputPath = flag.String("o", "", "output path")
+	inputPath = flag.String(
+		"i", "", "input path")
+	outputPath = flag.String(
+		"o", "", "output path")
+	rowsFlag = flag.String(
+		"rows", "", "comma-separated list of row ids.")
+	colsFlag = flag.String(
+		"cols", "", "comma-separated list of col ids.")
+	rowsPathFlag = flag.String(
+		"rows_path", "", "path to newline-separated list of row ids")
+	colsPathFlag = flag.String(
+		"cols_path", "", "path to newline-separated list of col ids")
+	rowsInverted = flag.Bool(
+		"row_keep", false, "if true, keep the rows, instead of removing them")
+	colsInverted = flag.Bool(
+		"col_keep", false, "if true, keep the columns, instead of removing them")
 )
+
+func getIds(flagval, path string) []uint32 {
+	var ids []uint32
+	add := func(part string) {
+		part = strings.TrimSpace(part)
+		if len(part) == 0 {
+			return
+		}
+		id, err := strconv.ParseUint(part, 10, 32)
+		if err != nil {
+			panic(err)
+		}
+		ids = append(ids, uint32(id))
+	}
+
+	for _, part := range strings.Split(flagval, ",") {
+		add(part)
+	}
+
+	if path != "" {
+		fh, err := os.Open(path)
+		if err != nil {
+			panic(err)
+		}
+		defer fh.Close()
+
+		scanner := bufio.NewScanner(fh)
+		for scanner.Scan() {
+			add(scanner.Text())
+		}
+
+		err = scanner.Err()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	return ids
+}
 
 func main() {
 	flag.Parse()
@@ -30,43 +81,9 @@ func main() {
 		panic("output path (-o) required")
 	}
 
-	var rowsInverted, colsInverted bool
-	if strings.HasPrefix(*rowsFlag, "+") {
-		*rowsFlag = strings.TrimPrefix(*rowsFlag, "+")
-		rowsInverted = true
-	}
-	if strings.HasPrefix(*colsFlag, "+") {
-		*colsFlag = strings.TrimPrefix(*colsFlag, "+")
-		colsInverted = true
-	}
-
-	var rows, cols []uint32
-	for _, part := range strings.Split(*rowsFlag, ",") {
-		part = strings.TrimSpace(part)
-		if len(part) == 0 {
-			continue
-		}
-		id, err := strconv.ParseUint(part, 10, 32)
-		if err != nil {
-			panic(err)
-		}
-		rows = append(rows, uint32(id))
-	}
-
-	for _, part := range strings.Split(*colsFlag, ",") {
-		part = strings.TrimSpace(part)
-		if len(part) == 0 {
-			continue
-		}
-		id, err := strconv.ParseUint(part, 10, 32)
-		if err != nil {
-			panic(err)
-		}
-		cols = append(cols, uint32(id))
-	}
-
 	err := mmm.Filter(*outputPath, *inputPath,
-		rows, rowsInverted, cols, colsInverted)
+		getIds(*rowsFlag, *rowsPathFlag), *rowsInverted,
+		getIds(*colsFlag, *colsPathFlag), *colsInverted)
 	if err != nil {
 		panic(err)
 	}
