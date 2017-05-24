@@ -18,6 +18,9 @@ func must(n int, err error) {
 
 func main() {
 	flag.Parse()
+	if flag.NArg() != 1 {
+		panic("expecting exactly one argument")
+	}
 	fh, err := mmm.Open(flag.Arg(0))
 	if err != nil {
 		panic(err)

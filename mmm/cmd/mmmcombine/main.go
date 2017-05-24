@@ -52,12 +52,14 @@ func main() {
 				if !equal(handle.RowIds(), handles[0].RowIds()) {
 					panic("row ids don't match")
 				}
+				cols += handle.Cols()
 			}
 		} else {
 			for _, handle := range handles[1:] {
 				if !equal(handle.ColIds(), handles[0].ColIds()) {
 					panic("col ids don't match")
 				}
+				rows += handle.Rows()
 			}
 		}
 	}
@@ -82,15 +84,17 @@ func main() {
 			for i := 0; i < out.Rows(); i++ {
 				copy(out.RowByIdx(i)[offset:offset+handle.Cols()], handle.RowByIdx(i))
 			}
+			copy(out.ColIds()[offset:offset+handle.Cols()], handle.ColIds())
 			offset += handle.Cols()
 		}
 	} else {
 		offset := 0
 		for _, handle := range handles {
 			for i := 0; i < handle.Rows(); i++ {
-				copy(out.RowByIdx(offset), handle.RowByIdx(i))
-				offset++
+				copy(out.RowByIdx(offset+i), handle.RowByIdx(i))
 			}
+			copy(out.RowIds()[offset:offset+handle.Rows()], handle.RowIds())
+			offset += handle.Rows()
 		}
 	}
 

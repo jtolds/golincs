@@ -11,21 +11,23 @@ import (
 
 func main() {
 	flag.Parse()
-	fh, err := mmm.Open(flag.Arg(0))
-	if err != nil {
-		panic(err)
-	}
-	defer fh.Close()
-
-	for idx := 0; idx < fh.Rows(); idx++ {
-		row := fh.RowByIdx(idx)
-		for col := range row {
-			row[col] = -row[col]
+	for _, path := range flag.Args() {
+		fh, err := mmm.Open(path)
+		if err != nil {
+			panic(err)
 		}
-	}
+		defer fh.Close()
 
-	err = fh.Close()
-	if err != nil {
-		panic(err)
+		for idx := 0; idx < fh.Rows(); idx++ {
+			row := fh.RowByIdx(idx)
+			for col := range row {
+				row[col] = -row[col]
+			}
+		}
+
+		err = fh.Close()
+		if err != nil {
+			panic(err)
+		}
 	}
 }

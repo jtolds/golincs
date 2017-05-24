@@ -197,9 +197,6 @@ func (h *Handle) Close() error {
 }
 
 func (h *Handle) RowByIdx(idx int) []float32 {
-	if idx < 0 || idx >= h.rows {
-		panic("row out of range")
-	}
 	return h.floats[h.cols*idx : h.cols*(idx+1)]
 }
 

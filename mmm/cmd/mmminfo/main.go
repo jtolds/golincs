@@ -12,14 +12,22 @@ import (
 
 func main() {
 	flag.Parse()
-	fh, err := mmm.Open(flag.Arg(0))
-	if err != nil {
-		panic(err)
-	}
-	defer fh.Close()
+	for i, path := range flag.Args() {
+		if i != 0 {
+			_, err := fmt.Println()
+			if err != nil {
+				panic(err)
+			}
+		}
+		fh, err := mmm.Open(path)
+		if err != nil {
+			panic(err)
+		}
+		defer fh.Close()
 
-	_, err = fmt.Printf("Rows: %d\nCols: %d\n", fh.Rows(), fh.Cols())
-	if err != nil {
-		panic(err)
+		_, err = fmt.Printf("Rows: %d\nCols: %d\n", fh.Rows(), fh.Cols())
+		if err != nil {
+			panic(err)
+		}
 	}
 }

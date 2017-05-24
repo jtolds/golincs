@@ -23,18 +23,20 @@ func normalize(vector []float32) {
 
 func main() {
 	flag.Parse()
-	fh, err := mmm.Open(flag.Arg(0))
-	if err != nil {
-		panic(err)
-	}
-	defer fh.Close()
+	for _, path := range flag.Args() {
+		fh, err := mmm.Open(path)
+		if err != nil {
+			panic(err)
+		}
+		defer fh.Close()
 
-	for idx := 0; idx < fh.Rows(); idx++ {
-		normalize(fh.RowByIdx(idx))
-	}
+		for idx := 0; idx < fh.Rows(); idx++ {
+			normalize(fh.RowByIdx(idx))
+		}
 
-	err = fh.Close()
-	if err != nil {
-		panic(err)
+		err = fh.Close()
+		if err != nil {
+			panic(err)
+		}
 	}
 }
