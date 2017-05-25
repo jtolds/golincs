@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"math"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,8 +24,9 @@ var (
 		"path to connect to the metadata db")
 	driver = flag.String("gse92742.db_driver", "sqlite3", "database driver")
 	data   = flag.String("gse92742.data",
-		"/home/jt/school/bio/gse92742/filtered-unit-sh_and_oe.mmap",
+		"/home/jt/school/bio/gse92742/filtered-unit-sh_and_oe-grouped.mmap",
 		"path to the data")
+	enrichmentAngle = flag.Float64("gse92742.angle", 0, "")
 )
 
 type Dataset struct {
@@ -216,7 +218,7 @@ func (ds *Dataset) getByIdx(idx int) (*sample, error) {
 	var sig_id string
 	id, found := ds.mmm.RowIdByIdx(idx)
 	if !found {
-		return nil, fmt.Errorf("not found")
+		return nil, fmt.Errorf("idx %d not found", idx)
 	}
 	err := ds.tx.QueryRow("SELECT sig_id FROM signatures WHERE id = ?", id).
 		Scan(&sig_id)
@@ -227,54 +229,72 @@ func (ds *Dataset) getByIdx(idx int) (*sample, error) {
 }
 
 func (ds *Dataset) Get(sampleId string) (dbs.Sample, error) {
+	s, _, err := ds.getById(sampleId)
+	return s, err
+}
+
+func (ds *Dataset) getById(sig_id string) (s *sample, found bool, err error) {
 	var id uint32
-	err := ds.tx.QueryRow("SELECT id FROM signatures WHERE sig_id = ?",
-		sampleId).Scan(&id)
+	err = ds.tx.QueryRow("SELECT id FROM signatures WHERE sig_id = ?",
+		sig_id).Scan(&id)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	idx, found := ds.mmm.RowIdxById(id)
 	if !found {
-		return nil, fmt.Errorf("invalid id")
+		return nil, false, nil
 	}
-	return ds.loadSample(sampleId, idx)
+	s, err = ds.loadSample(sig_id, idx)
+	if err != nil {
+		return nil, false, err
+	}
+	return s, true, nil
 }
 
-type sampleDist struct {
-	idx  int
-	dist float32
+type sampleScore struct {
+	idx   int
+	score float64
 	dbs.Sample
 }
 
-func (s sampleDist) Score() float64 { return float64(s.dist) }
+func (s sampleScore) Score() float64 { return s.score }
 
-type maxHeap []sampleDist
+type minHeap []sampleScore
 
-func (h *maxHeap) Len() int { return len(*h) }
+func (h *minHeap) Len() int { return len(*h) }
 
-func (h *maxHeap) Less(i, j int) bool {
-	return (*h)[i].dist > (*h)[j].dist
+func (h *minHeap) Less(i, j int) bool {
+	return (*h)[i].score < (*h)[j].score
 }
 
-func (h *maxHeap) Swap(i, j int) {
+func (h *minHeap) Swap(i, j int) {
 	(*h)[i], (*h)[j] = (*h)[j], (*h)[i]
 }
 
-func (h *maxHeap) Push(x interface{}) {
-	(*h) = append(*h, x.(sampleDist))
+func (h *minHeap) Push(x interface{}) {
+	(*h) = append(*h, x.(sampleScore))
 }
 
-func (h *maxHeap) Pop() (i interface{}) {
+func (h *minHeap) Pop() (i interface{}) {
 	i, *h = (*h)[len(*h)-1], (*h)[:len(*h)-1]
 	return i
 }
 
-func distSquared(p1, p2 []float32) (sum float32) {
-	for i := 0; i < len(p1); i++ {
-		delta := p1[i] - p2[i]
-		sum += delta * delta
+func magSquared(p []float32) (sum float64) {
+	for _, v := range p {
+		f := float64(v)
+		sum += f * f
 	}
 	return sum
+}
+
+func unitCosineSimilarity(p1, p2 []float32) float64 {
+	var num float64
+	for i := range p1 {
+		num += float64(p1[i]) * float64(p2[i])
+	}
+	// the denominator is 1 if p1 and p2 are both unit vectors, which they are
+	return num
 }
 
 func normalize(vector []float32) {
@@ -282,26 +302,47 @@ func normalize(vector []float32) {
 	for _, val := range vector {
 		squared_sum += float64(val) * float64(val)
 	}
-	dist := math.Sqrt(squared_sum)
+	if squared_sum == 0 {
+		return
+	}
+	mag := math.Sqrt(squared_sum)
 	for i := range vector {
-		vector[i] = float32(float64(vector[i]) / dist)
+		vector[i] = float32(float64(vector[i]) / mag)
 	}
 }
 
-func (ds *Dataset) Nearest(dims []dbs.Dimension, filter dbs.Filter,
-	limit int) ([]dbs.ScoredSample, error) {
+func equal(p1, p2 []float32) bool {
+	if len(p1) != len(p2) {
+		return false
+	}
+	for i, v := range p1 {
+		if v != p2[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (ds *Dataset) Nearest(dims []dbs.Dimension, filter dbs.SampleFilter,
+	score_filter dbs.ScoreFilter, limit int) ([]dbs.ScoredSample, error) {
 
 	query := make([]float32, ds.mmm.Cols())
 	for _, dim := range dims {
-		query[ds.idxMap[dim.Name]] = float32(dim.Value)
+		if idx, found := ds.idxMap[dim.Name]; found {
+			query[idx] = float32(dim.Value)
+		}
 	}
 	normalize(query)
 
-	h := make(maxHeap, 0, limit)
-	heap.Push(&h, sampleDist{idx: -1, dist: float32(math.Inf(1))})
+	h := make(minHeap, 0, limit)
+	heap.Push(&h, sampleScore{idx: -1, score: math.Inf(-1)})
 	for i := 0; i < ds.mmm.Rows() || i < 1; i++ {
-		dist := distSquared(query, ds.getValues(i))
-		if dist >= h[0].dist || dist == 0 {
+		vals := ds.getValues(i)
+		score := unitCosineSimilarity(query, vals)
+		if score <= h[0].score || equal(query, vals) {
+			continue
+		}
+		if score_filter != nil && !score_filter(score) {
 			continue
 		}
 
@@ -320,9 +361,9 @@ func (ds *Dataset) Nearest(dims []dbs.Dimension, filter dbs.Filter,
 		if len(h) >= cap(h) {
 			heap.Pop(&h)
 		}
-		heap.Push(&h, sampleDist{
+		heap.Push(&h, sampleScore{
 			idx:    i,
-			dist:   dist,
+			score:  score,
 			Sample: s})
 	}
 
@@ -330,6 +371,9 @@ func (ds *Dataset) Nearest(dims []dbs.Dimension, filter dbs.Filter,
 
 	rv := make([]dbs.ScoredSample, 0, len(h))
 	for _, el := range h {
+		if el.idx == -1 {
+			continue
+		}
 		if el.Sample == nil {
 			s, err := ds.getByIdx(el.idx)
 			if err != nil {
@@ -343,47 +387,42 @@ func (ds *Dataset) Nearest(dims []dbs.Dimension, filter dbs.Filter,
 	return rv, nil
 }
 
-func (ds *Dataset) Search(name string, filter dbs.Filter, limit int) (
+func (ds *Dataset) Search(name string, filter dbs.SampleFilter, limit int) (
 	rv []dbs.ScoredSample, err error) {
-	// TODO: this is terrible
-	name = strings.ToLower(name)
-	var ctoken string
-	for {
-		samples, ctokenout, err := ds.List(ctoken, 10)
+	rows, err := ds.tx.Query(
+		"SELECT sig_id FROM sig WHERE instr(lower(sig.pert_iname), ?)",
+		strings.ToLower(name))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var sig_id string
+		err = rows.Scan(&sig_id)
 		if err != nil {
 			return nil, err
 		}
-		ctoken = ctokenout
-		if len(samples) == 0 {
+
+		s, found, err := ds.getById(sig_id)
+		if err != nil {
+			return nil, err
+		}
+		if !found {
+			continue
+		}
+
+		if filter != nil && !filter(s) {
+			continue
+		}
+
+		rv = append(rv, sampleScore{idx: s.idx, score: 1, Sample: s})
+		if len(rv) >= limit {
 			return rv, nil
 		}
-		for _, sI := range samples {
-			s := sI.(*sample)
-			found := false
-			if strings.Contains(strings.ToLower(s.id), name) ||
-				strings.Contains(strings.ToLower(s.name), name) {
-				found = true
-			}
-			if !found {
-				for _, tagval := range s.tags {
-					if strings.Contains(strings.ToLower(tagval), name) {
-						found = true
-						break
-					}
-				}
-			}
-			if !found {
-				continue
-			}
-			if filter != nil && !filter(sI) {
-				continue
-			}
-			rv = append(rv, sampleDist{idx: s.idx, dist: 0, Sample: sI})
-			if len(rv) >= limit {
-				return rv, nil
-			}
-		}
 	}
+
+	return rv, nil
 }
 
 type dimensionValueSorter []dbs.Dimension
@@ -402,7 +441,49 @@ func (d dimensionNameSorter) Less(i, j int) bool {
 	return d[i].Name < d[j].Name
 }
 
-func (ds *Dataset) Enriched(dims []dbs.Dimension, limit int) (
+func (ds *Dataset) Enriched(dims []dbs.Dimension) (
 	[]dbs.GeneSet, error) {
+	angle := *enrichmentAngle / 2
+	filter := func(score float64) bool {
+		return score >= angle || score <= -angle
+	}
+	if angle == 0 {
+		filter = nil
+	}
+	data, err := ds.Nearest(dims, nil, filter, ds.mmm.Rows())
+	if err != nil {
+		return nil, err
+	}
+	fh, err := os.Create("/tmp/test-data.out")
+	if err != nil {
+		return nil, err
+	}
+	_, err = fmt.Fprintf(fh, "\tBaseline\tSignature\n")
+	if err != nil {
+		return nil, err
+	}
+	for _, thing := range data {
+		_, err = fmt.Fprintf(fh, "%s\t0\t%f\n", thing.Name(), thing.Score())
+		if err != nil {
+			return nil, err
+		}
+	}
+	err = fh.Close()
+	if err != nil {
+		return nil, err
+	}
+	fh, err = os.Create("/tmp/test-classes.out")
+	if err != nil {
+		return nil, err
+	}
+	_, err = fmt.Fprintf(fh, "Baseline\tBaseline\nSignature\tSignature\n")
+	if err != nil {
+		return nil, err
+	}
+	err = fh.Close()
+	if err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }

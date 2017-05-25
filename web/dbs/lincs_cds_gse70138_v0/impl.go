@@ -253,7 +253,8 @@ func (d *Dataset) Get(sampleId string) (dbs.Sample, error) {
 	return &Sample{meta: meta, d: d}, nil
 }
 
-func (d *Dataset) Nearest(dims []dbs.Dimension, filter dbs.Filter, limit int) (
+func (d *Dataset) Nearest(dims []dbs.Dimension, filter dbs.SampleFilter,
+	score_filter dbs.ScoreFilter, limit int) (
 	rv []dbs.ScoredSample, err error) {
 	var p pos
 	for _, dim := range dims {
@@ -286,7 +287,7 @@ func (d *Dataset) Nearest(dims []dbs.Dimension, filter dbs.Filter, limit int) (
 	return rv, nil
 }
 
-func (d *Dataset) Search(name string, filter dbs.Filter, limit int) (
+func (d *Dataset) Search(name string, filter dbs.SampleFilter, limit int) (
 	rv []dbs.ScoredSample, err error) {
 	// TODO: make this whole function efficient
 	name = strings.ToLower(name)
@@ -360,7 +361,7 @@ func (d *Dataset) TagNames() []string {
 		"pert_id", "pert_time", "pert_type", "replicate_count"}
 }
 
-func (d *Dataset) Enriched(dims []dbs.Dimension, limit int) (
+func (d *Dataset) Enriched(dims []dbs.Dimension) (
 	[]dbs.GeneSet, error) {
 	return nil, nil
 }

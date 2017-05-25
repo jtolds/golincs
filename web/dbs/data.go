@@ -31,9 +31,10 @@ type ScoredSample interface {
 	Score() float64
 }
 
-type Filter func(s Sample) bool
+type SampleFilter func(Sample) bool
+type ScoreFilter func(float64) bool
 
-func CombineFilters(filters ...Filter) Filter {
+func CombineSampleFilters(filters ...SampleFilter) SampleFilter {
 	if len(filters) == 0 {
 		return nil
 	}
@@ -57,10 +58,10 @@ type Dataset interface {
 	List(ctoken string, limit int) (
 		samples []Sample, ctokenout string, err error)
 	Get(sampleId string) (Sample, error)
-	Nearest(dims []Dimension, filter Filter, limit int) (
+	Nearest(dims []Dimension, f1 SampleFilter, f2 ScoreFilter, limit int) (
 		[]ScoredSample, error)
-	Search(name string, filter Filter, limit int) ([]ScoredSample, error)
-	Enriched(dims []Dimension, limit int) ([]GeneSet, error)
+	Search(name string, filter SampleFilter, limit int) ([]ScoredSample, error)
+	Enriched(dims []Dimension) ([]GeneSet, error)
 }
 
 type GeneSet interface{}

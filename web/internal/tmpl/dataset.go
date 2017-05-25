@@ -77,11 +77,6 @@ var _ = T.MustParse(`{{ template "header" . }}
 </div>
 <div class="row">
 <div class="col-md-12 form-inline" style="text-align:right;">
-  <div class="form-group">
-    <label for="enrichedInput1"><strong>k = </strong></label>
-    <input type="number" name="limit" class="form-control" id="enrichedInput1"
-      value="25" />
-  </div>
   <button type="submit" class="btn btn-default">Search</button>
 </div>
 </div>

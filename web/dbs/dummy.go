@@ -80,21 +80,25 @@ func (d *dummySet) Get(sampleId string) (Sample, error) {
 	return nil, ErrNotFound.New("%#v not found", sampleId)
 }
 
-func (d *dummySet) Nearest(dims []Dimension, filter Filter, limit int) (
-	[]ScoredSample, error) {
+func (d *dummySet) Nearest(dims []Dimension, f1 SampleFilter,
+	f2 ScoreFilter, limit int) ([]ScoredSample, error) {
 	var rv []ScoredSample
 	for i := range d.samples {
 		if i >= limit {
 			break
 		}
-		if filter == nil || filter(&d.samples[i]) {
-			rv = append(rv, &d.samples[i])
+		if f1 != nil && !f1(&d.samples[i]) {
+			continue
 		}
+		if f2 != nil && !f2(d.samples[i].Score()) {
+			continue
+		}
+		rv = append(rv, &d.samples[i])
 	}
 	return rv, nil
 }
 
-func (d *dummySet) Search(name string, filter Filter, limit int) (
+func (d *dummySet) Search(name string, filter SampleFilter, limit int) (
 	[]ScoredSample, error) {
 	var rv []ScoredSample
 	for i := range d.samples {
@@ -112,6 +116,7 @@ func (d *dummySet) Search(name string, filter Filter, limit int) (
 
 func (d *dummySet) DimMax() float64 { return 10 }
 
-func (d *dummySet) Enriched(dims []Dimension, limit int) ([]GeneSet, error) {
+func (d *dummySet) Enriched(dims []Dimension) (
+	[]GeneSet, error) {
 	return nil, nil
 }

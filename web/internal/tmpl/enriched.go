@@ -27,7 +27,7 @@ var _ = T.MustParse(`{{ template "header" . }}
     <a href="/dataset/{{.Page.dataset.Id}}/sample/{{.Page.sample.Id}}/similar">Similar Samples</a>
   </li>
   <li role="presentation" class="active">
-    <a>Enriched Samples</a>
+    <a>Enriched Gene Sets</a>
   </li>
 </ul>
 

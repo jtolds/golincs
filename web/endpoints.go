@@ -59,7 +59,7 @@ func (a *Endpoints) Similar(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		whfatal.Error(err)
 	}
-	nearest, err := a.data.Nearest(dims, nil,
+	nearest, err := a.data.Nearest(dims, nil, nil,
 		whparse.OptInt(r.FormValue("limit"), 30))
 	if err != nil {
 		whfatal.Error(err)
@@ -77,8 +77,7 @@ func (a *Endpoints) Enriched(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		whfatal.Error(err)
 	}
-	enriched, err := a.data.Enriched(dims,
-		whparse.OptInt(r.FormValue("limit"), 30))
+	enriched, err := a.data.Enriched(dims)
 	if err != nil {
 		whfatal.Error(err)
 	}
@@ -118,7 +117,7 @@ func (a *Endpoints) parseDims(r *http.Request) ([]dbs.Dimension, error) {
 }
 
 func (a *Endpoints) Nearest(w http.ResponseWriter, r *http.Request) {
-	var filters []dbs.Filter
+	var filters []dbs.SampleFilter
 	for _, filter_string := range strings.Fields(r.FormValue("filters")) {
 		parts := strings.Split(filter_string, "=")
 		if len(parts) != 2 {
@@ -136,8 +135,8 @@ func (a *Endpoints) Nearest(w http.ResponseWriter, r *http.Request) {
 		whfatal.Error(err)
 	}
 
-	nearest, err := a.data.Nearest(dims, dbs.CombineFilters(filters...),
-		whparse.OptInt(r.FormValue("limit"), 30))
+	nearest, err := a.data.Nearest(dims, dbs.CombineSampleFilters(filters...),
+		nil, whparse.OptInt(r.FormValue("limit"), 30))
 	if err != nil {
 		whfatal.Error(err)
 	}
@@ -153,8 +152,7 @@ func (a *Endpoints) EnrichedSearch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		whfatal.Error(err)
 	}
-	enriched, err := a.data.Enriched(dims,
-		whparse.OptInt(r.FormValue("limit"), 30))
+	enriched, err := a.data.Enriched(dims)
 	if err != nil {
 		whfatal.Error(err)
 	}
