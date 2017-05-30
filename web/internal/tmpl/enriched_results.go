@@ -3,7 +3,12 @@
 
 package tmpl
 
-var _ = T.MustParse(`<table class="table table-striped">
+var _ = T.MustParse(`
+<div style="float: right;">
+  {{.Page.page_urls.Render}}
+</div>
+
+<table class="table table-striped">
 <tr>
   <th>Name</th>
   <th>Score</th>
@@ -17,6 +22,4 @@ var _ = T.MustParse(`<table class="table table-striped">
 {{ end }}
 
 </table>
-
-{{.Page.page_urls.Render}}
 `)

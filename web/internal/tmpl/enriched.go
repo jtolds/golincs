@@ -9,12 +9,12 @@ var _ = T.MustParse(`{{ template "header" . }}
 <h2>Sample: {{.Page.sample.Name}}</h2>
 
 <table class="table"><tr>
-{{ range .Page.dataset.TagNames }}
+{{ range .Page.dataset.SampleTagNames }}
 <th>{{.}}</th>
 {{end}}
 </tr><tr>
 {{ $Page := .Page }}
-{{ range .Page.dataset.TagNames }}
+{{ range .Page.dataset.SampleTagNames }}
 <td>{{index $Page.sample.Tags .}}</td>
 {{end}}
 </tr></table>

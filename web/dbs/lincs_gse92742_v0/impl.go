@@ -16,6 +16,7 @@ import (
 
 	"github.com/jtolds/golincs/mmm"
 	"github.com/jtolds/golincs/web/dbs"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/spacemonkeygo/errors"
 	"github.com/spacemonkeygo/spacelog"
 )
@@ -51,7 +52,8 @@ type scoredGeneset struct {
 	score float64
 }
 
-func (s *scoredGeneset) Score() float64 { return s.score }
+func (s *scoredGeneset) Score() float64                  { return s.score }
+func (s *scoredGeneset) Query() ([]dbs.Dimension, error) { panic("TODO") }
 
 type Dataset struct {
 	db           *sql.DB
@@ -211,7 +213,7 @@ func (ds *Dataset) Samples() int {
 
 func (ds *Dataset) DimMax() float64 { return 1 }
 
-func (ds *Dataset) TagNames() []string {
+func (ds *Dataset) SampleTagNames() []string {
 	return []string{
 		"pert_id", "pert_type", "cell_id", "pert_idose",
 		"pert_itime", "is_touchstone"}
@@ -240,7 +242,8 @@ func (s *sample) Data() ([]dbs.Dimension, error) {
 	return rv, nil
 }
 
-func (ds *Dataset) List(offset, limit int) (samples []dbs.Sample, err error) {
+func (ds *Dataset) ListSamples(offset, limit int) (samples []dbs.Sample,
+	err error) {
 	for i := offset; i < offset+limit && i < ds.samples.Rows(); i++ {
 		s, err := ds.getByIdx(i)
 		if err != nil {
@@ -249,6 +252,10 @@ func (ds *Dataset) List(offset, limit int) (samples []dbs.Sample, err error) {
 		samples = append(samples, s)
 	}
 	return samples, nil
+}
+
+func (ds *Dataset) ListGenesets(offset, limit int) ([]dbs.Geneset, error) {
+	panic("TODO")
 }
 
 func (ds *Dataset) loadSample(sig_id string, idx int) (*sample, error) {
@@ -287,7 +294,7 @@ func (ds *Dataset) getByIdx(idx int) (*sample, error) {
 	return ds.loadSample(sig_id, idx)
 }
 
-func (ds *Dataset) Get(sampleId string) (dbs.Sample, error) {
+func (ds *Dataset) GetSample(sampleId string) (dbs.Sample, error) {
 	s, _, err := ds.getById(sampleId)
 	return s, err
 }
@@ -382,8 +389,9 @@ func equal(p1, p2 []float32) bool {
 	return true
 }
 
-func (ds *Dataset) Nearest(dims []dbs.Dimension, filter dbs.SampleFilter,
-	score_filter dbs.ScoreFilter, offset, limit int) ([]dbs.ScoredSample, error) {
+func (ds *Dataset) NearestSamples(dims []dbs.Dimension,
+	filter dbs.SampleFilter, score_filter dbs.ScoreFilter, offset, limit int) (
+	[]dbs.ScoredSample, error) {
 
 	query := make([]float32, ds.samples.Cols())
 	for _, dim := range dims {
@@ -451,8 +459,8 @@ func (ds *Dataset) Nearest(dims []dbs.Dimension, filter dbs.SampleFilter,
 	return rv, nil
 }
 
-func (ds *Dataset) Search(name string, filter dbs.SampleFilter,
-	offset, limit int) (rv []dbs.ScoredSample, err error) {
+func (ds *Dataset) SampleSearch(name string, filter dbs.SampleFilter,
+	offset, limit int) (rv []dbs.Sample, err error) {
 	rows, err := ds.tx.Query(
 		"SELECT sig_id FROM sig WHERE instr(lower(sig.pert_iname), ?)",
 		strings.ToLower(name))
@@ -495,8 +503,8 @@ func (ds *Dataset) Search(name string, filter dbs.SampleFilter,
 	return rv, nil
 }
 
-func (ds *Dataset) Enriched(dims []dbs.Dimension, offset, limit int) (
-	[]dbs.ScoredGeneset, error) {
+func (ds *Dataset) NearestGenesets(dims []dbs.Dimension, f dbs.ScoreFilter,
+	offset, limit int) ([]dbs.ScoredGeneset, error) {
 	angle := *enrichmentAngle / 2
 	filter := func(score float64) bool {
 		return score >= angle || score <= -angle
@@ -504,7 +512,7 @@ func (ds *Dataset) Enriched(dims []dbs.Dimension, offset, limit int) (
 	if angle == 0 {
 		filter = nil
 	}
-	data, err := ds.Nearest(dims, nil, filter, 0, ds.samples.Rows())
+	data, err := ds.NearestSamples(dims, nil, filter, 0, ds.samples.Rows())
 	if err != nil {
 		return nil, err
 	}
@@ -538,6 +546,15 @@ func (ds *Dataset) Enriched(dims []dbs.Dimension, offset, limit int) (
 	}
 
 	return gs_scores, nil
+}
+
+func (ds *Dataset) GenesetSearch(keyword string, offset, limit int) (
+	[]dbs.Geneset, error) {
+	panic("TODO")
+}
+
+func (ds *Dataset) GetGeneset(genesetId string) (dbs.Geneset, error) {
+	panic("TODO")
 }
 
 func (ds *Dataset) Genesets() int { return len(ds.genesets) }

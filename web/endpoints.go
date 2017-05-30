@@ -15,6 +15,8 @@ import (
 	"gopkg.in/webhelp.v1/whparse"
 )
 
+const defaultLimit = 20
+
 type Endpoints struct {
 	data dbs.Dataset
 }
@@ -24,7 +26,7 @@ func NewEndpoints(data dbs.Dataset) *Endpoints {
 }
 
 func (a *Endpoints) sample(ctx context.Context) dbs.Sample {
-	sample, err := a.data.Get(sampleId.Get(ctx))
+	sample, err := a.data.GetSample(sampleId.Get(ctx))
 	if err != nil {
 		whfatal.Error(err)
 	}
@@ -33,8 +35,8 @@ func (a *Endpoints) sample(ctx context.Context) dbs.Sample {
 
 func (a *Endpoints) Dataset(w http.ResponseWriter, r *http.Request) {
 	offset := whparse.OptInt(r.FormValue("offset"), 0)
-	limit := whparse.OptInt(r.FormValue("limit"), 30)
-	samples, err := a.data.List(offset, limit)
+	limit := whparse.OptInt(r.FormValue("limit"), defaultLimit)
+	samples, err := a.data.ListSamples(offset, limit)
 	if err != nil {
 		whfatal.Error(err)
 	}
@@ -60,8 +62,8 @@ func (a *Endpoints) Similar(w http.ResponseWriter, r *http.Request) {
 		whfatal.Error(err)
 	}
 	offset := whparse.OptInt(r.FormValue("offset"), 0)
-	limit := whparse.OptInt(r.FormValue("limit"), 30)
-	nearest, err := a.data.Nearest(dims, nil, nil, offset, limit)
+	limit := whparse.OptInt(r.FormValue("limit"), defaultLimit)
+	nearest, err := a.data.NearestSamples(dims, nil, nil, offset, limit)
 	if err != nil {
 		whfatal.Error(err)
 	}
@@ -80,8 +82,8 @@ func (a *Endpoints) Enriched(w http.ResponseWriter, r *http.Request) {
 		whfatal.Error(err)
 	}
 	offset := whparse.OptInt(r.FormValue("offset"), 0)
-	limit := whparse.OptInt(r.FormValue("limit"), 30)
-	enriched, err := a.data.Enriched(dims, offset, limit)
+	limit := whparse.OptInt(r.FormValue("limit"), defaultLimit)
+	enriched, err := a.data.NearestGenesets(dims, nil, offset, limit)
 	if err != nil {
 		whfatal.Error(err)
 	}
@@ -141,9 +143,9 @@ func (a *Endpoints) Nearest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	offset := whparse.OptInt(r.FormValue("offset"), 0)
-	limit := whparse.OptInt(r.FormValue("limit"), 30)
-	nearest, err := a.data.Nearest(dims, dbs.CombineSampleFilters(filters...),
-		nil, offset, limit)
+	limit := whparse.OptInt(r.FormValue("limit"), defaultLimit)
+	nearest, err := a.data.NearestSamples(dims,
+		dbs.CombineSampleFilters(filters...), nil, offset, limit)
 	if err != nil {
 		whfatal.Error(err)
 	}
@@ -161,8 +163,8 @@ func (a *Endpoints) EnrichedSearch(w http.ResponseWriter, r *http.Request) {
 		whfatal.Error(err)
 	}
 	offset := whparse.OptInt(r.FormValue("offset"), 0)
-	limit := whparse.OptInt(r.FormValue("limit"), 30)
-	enriched, err := a.data.Enriched(dims, offset, limit)
+	limit := whparse.OptInt(r.FormValue("limit"), defaultLimit)
+	enriched, err := a.data.NearestGenesets(dims, nil, offset, limit)
 	if err != nil {
 		whfatal.Error(err)
 	}
@@ -179,8 +181,8 @@ func (a *Endpoints) Search(w http.ResponseWriter, r *http.Request) {
 		whfatal.Error(wherr.BadRequest.New("no name provided"))
 	}
 	offset := whparse.OptInt(r.FormValue("offset"), 0)
-	limit := whparse.OptInt(r.FormValue("limit"), 30)
-	results, err := a.data.Search(name, nil, offset, limit)
+	limit := whparse.OptInt(r.FormValue("limit"), defaultLimit)
+	results, err := a.data.SampleSearch(name, nil, offset, limit)
 	if err != nil {
 		whfatal.Error(err)
 	}

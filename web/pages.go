@@ -57,45 +57,34 @@ func prevURL(r *http.Request, offset, limit, total int) string {
 }
 
 type pageURLs struct {
+	offset, limit           int
 	First, Prev, Next, Last string
 }
 
 func newPageURLs(r *http.Request, offset, limit, total int) *pageURLs {
 	return &pageURLs{
-		First: firstURL(r, offset, limit, total),
-		Prev:  prevURL(r, offset, limit, total),
-		Next:  nextURL(r, offset, limit, total),
-		Last:  lastURL(r, offset, limit, total),
+		offset: offset,
+		limit:  limit,
+		First:  firstURL(r, offset, limit, total),
+		Prev:   prevURL(r, offset, limit, total),
+		Next:   nextURL(r, offset, limit, total),
+		Last:   lastURL(r, offset, limit, total),
 	}
 }
 
 func (p *pageURLs) Render() template.HTML {
-	var added bool
-	var rv string
+	rv := fmt.Sprintf("Page %d", p.offset/p.limit+1)
 	if p.First != "" {
-		rv += `<a href="` + p.First + `">First</a>`
-		added = true
+		rv += `| <a href="` + p.First + `">First</a>`
 	}
 	if p.Prev != "" {
-		if added {
-			rv += " | "
-		}
-		rv += `<a href="` + p.Prev + `">Prev</a>`
-		added = true
+		rv += `| <a href="` + p.Prev + `">Prev</a>`
 	}
 	if p.Next != "" {
-		if added {
-			rv += " | "
-		}
-		rv += `<a href="` + p.Next + `">Next</a>`
-		added = true
+		rv += `| <a href="` + p.Next + `">Next</a>`
 	}
 	if p.Last != "" {
-		if added {
-			rv += " | "
-		}
-		rv += `<a href="` + p.Last + `">Last</a>`
-		added = true
+		rv += `| <a href="` + p.Last + `">Last</a>`
 	}
 	return template.HTML(rv)
 }

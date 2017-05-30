@@ -9,12 +9,12 @@ var _ = T.MustParse(`{{ template "header" . }}
 <h2>Sample: {{.Page.sample.Name}}</h2>
 
 <table class="table"><tr>
-{{ range .Page.dataset.TagNames }}
+{{ range .Page.dataset.SampleTagNames }}
 <th>{{.}}</th>
 {{end}}
 </tr><tr>
 {{ $Page := .Page }}
-{{ range .Page.dataset.TagNames }}
+{{ range .Page.dataset.SampleTagNames }}
 <td>{{index $Page.sample.Tags .}}</td>
 {{end}}
 </tr></table>
@@ -34,12 +34,16 @@ var _ = T.MustParse(`{{ template "header" . }}
 <div class="panel panel-default">
   <div class="panel-body">
 
+  <div style="float: right;">
+    {{.Page.page_urls.Render}}
+  </div>
+
   <table class="table table-striped">
 
   <tr>
     <th>Id</th>
     <th>Name</th>
-    {{ range .Page.dataset.TagNames }}
+    {{ range .Page.dataset.SampleTagNames }}
     <th>{{.}}</th>
     {{end}}
     <th>Score</th>
@@ -51,7 +55,7 @@ var _ = T.MustParse(`{{ template "header" . }}
     <td><a href="/dataset/{{$page.dataset.Id}}/sample/{{.Id}}/similar">{{.Id}}</a></td>
     <td>{{.Name}}</td>
     {{ $sample := . }}
-    {{ range $page.dataset.TagNames }}
+    {{ range $page.dataset.SampleTagNames }}
       <td>{{index $sample.Tags .}}</td>
     {{end}}
     <td>{{.Score}}</td>
@@ -59,8 +63,6 @@ var _ = T.MustParse(`{{ template "header" . }}
   {{ end }}
 
   </table>
-
-  {{.Page.page_urls.Render}}
 
   </div>
 </div>

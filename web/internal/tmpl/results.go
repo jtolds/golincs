@@ -9,11 +9,15 @@ var _ = T.MustParse(`{{ template "header" . }}
 
 <h2>Search results</h2>
 
+<div style="float: right;">
+  {{.Page.page_urls.Render}}
+</div>
+
 <table class="table table-striped">
 <tr>
 <th>Id</th>
 <th>Name</th>
-{{ range .Page.dataset.TagNames }}
+{{ range .Page.dataset.SampleTagNames }}
 <th>{{.}}</th>
 {{end}}
 <th>Score</th></tr>
@@ -24,13 +28,11 @@ var _ = T.MustParse(`{{ template "header" . }}
 <td><a href="/dataset/{{$page.dataset.Id}}/sample/{{.Id}}">{{.Id}}</a></td>
 <td>{{.Name}}</td>
 {{ $sample := . }}
-{{ range $page.dataset.TagNames }}
+{{ range $page.dataset.SampleTagNames }}
 <td>{{index $sample.Tags .}}</td>
 {{end}}
 <td>{{.Score}}</td></tr>
 {{ end }}
 </table>
-
-{{.Page.page_urls.Render}}
 
 {{ template "footer" . }}`)

@@ -10,7 +10,7 @@ var _ = T.MustParse(`<!DOCTYPE html>
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>JT's LINCS-CDS v0</title>
+    <title>JT's LINCS Query interface v4</title>
 
     <link rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.3.6/lumen/bootstrap.css">

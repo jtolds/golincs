@@ -120,14 +120,16 @@ var _ = T.MustParse(`{{ template "header" . }}
 
 <h2>Samples</h2>
 
+<div style="float: right;">
+  {{.Page.page_urls.Render}}
+</div>
+
 <ul>
 {{ $Page := .Page }}
 {{ range .Page.samples }}
 <li><a href="/dataset/{{$Page.dataset.Id}}/sample/{{.Id}}">{{.Name}}</a></li>
 {{ end }}
 </ul>
-
-{{.Page.page_urls.Render}}
 
 </div>
 </div>
