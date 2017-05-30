@@ -6,8 +6,10 @@ package tmpl
 var _ = T.MustParse(`{{ template "header" . }}
 
 <h1>Dataset: {{.Page.dataset.Name}}</h1>
-<p>Dataset is associated with {{ .Page.dataset.Dimensions }} dimensions
-  and {{ .Page.dataset.Samples }} samples.</p>
+<p>Dataset is associated with {{ .Page.dataset.Dimensions }} directly measured
+ genes, {{ .Page.dataset.GeneSigs }} gene signatures,
+ {{ .Page.dataset.Samples }} sample signatures, and
+ {{.Page.dataset.Genesets }} genesets.</p>
 
 <h2>Search</h2>
 

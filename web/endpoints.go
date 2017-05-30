@@ -182,7 +182,7 @@ func (a *Endpoints) Search(w http.ResponseWriter, r *http.Request) {
 	}
 	offset := whparse.OptInt(r.FormValue("offset"), 0)
 	limit := whparse.OptInt(r.FormValue("limit"), defaultLimit)
-	results, err := a.data.SampleSearch(name, nil, offset, limit)
+	results, err := a.data.SearchSamples(name, nil, offset, limit)
 	if err != nil {
 		whfatal.Error(err)
 	}

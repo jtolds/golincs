@@ -31,6 +31,16 @@ type ScoredSample interface {
 	Score() float64
 }
 
+type GeneSig interface {
+	Name() string
+	Data() ([]Dimension, error)
+}
+
+type ScoredGeneSig interface {
+	GeneSig
+	Score() float64
+}
+
 type Geneset interface {
 	Name() string
 	Description() string
@@ -78,27 +88,30 @@ func CombineScoreFilters(filters ...ScoreFilter) ScoreFilter {
 type Dataset interface {
 	Name() string
 	Dimensions() int
-
-	Samples() int
+	DimMax() float64
 	SampleTagNames() []string
 
+	Samples() int
+	GeneSigs() int
 	Genesets() int
 
-	DimMax() float64
-
 	ListSamples(offset, limit int) ([]Sample, error)
+	ListGeneSigs(offset, limit int) ([]GeneSig, error)
 	ListGenesets(offset, limit int) ([]Geneset, error)
 
 	GetSample(sampleId string) (Sample, error)
+	GetGeneSig(geneSigId string) (GeneSig, error)
 	GetGeneset(genesetId string) (Geneset, error)
 
 	NearestSamples(dims []Dimension, f1 SampleFilter, f2 ScoreFilter,
 		offset, limit int) ([]ScoredSample, error)
+	NearestGeneSigs(dims []Dimension, f2 ScoreFilter, offset, limit int) (
+		[]ScoredGeneSig, error)
 	NearestGenesets(dims []Dimension, f ScoreFilter, offset, limit int) (
 		[]ScoredGeneset, error)
 
-	SampleSearch(keyword string, filter SampleFilter, offset, limit int) (
+	SearchSamples(keyword string, filter SampleFilter, offset, limit int) (
 		[]Sample, error)
-	GenesetSearch(keyword string, offset, limit int) (
-		[]Geneset, error)
+	SearchGeneSigs(keyword string, offset, limit int) ([]GeneSig, error)
+	SearchGenesets(keyword string, offset, limit int) ([]Geneset, error)
 }

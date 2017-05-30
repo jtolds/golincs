@@ -37,7 +37,7 @@ var _ = T.MustParse(`<!DOCTYPE html>
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="/">JT's LINCS-CDS v0</a>
+          <a class="navbar-brand" href="/">JT's LINCS Query interface v4</a>
         </div>
         <div id="navbar" class="navbar-collapse collapse">
           <ul class="nav navbar-nav navbar-left">

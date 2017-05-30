@@ -211,6 +211,10 @@ func (ds *Dataset) Samples() int {
 	return ds.samples.Rows()
 }
 
+func (ds *Dataset) GeneSigs() int {
+	return ds.samples.Rows()
+}
+
 func (ds *Dataset) DimMax() float64 { return 1 }
 
 func (ds *Dataset) SampleTagNames() []string {
@@ -240,6 +244,11 @@ func (s *sample) Data() ([]dbs.Dimension, error) {
 	}
 	sort.Sort(sort.Reverse(dimensionValueSorter(rv)))
 	return rv, nil
+}
+
+func (ds *Dataset) ListGeneSigs(offset, limit int) (samples []dbs.GeneSig,
+	err error) {
+	panic("TODO")
 }
 
 func (ds *Dataset) ListSamples(offset, limit int) (samples []dbs.Sample,
@@ -292,6 +301,11 @@ func (ds *Dataset) getByIdx(idx int) (*sample, error) {
 		return nil, err
 	}
 	return ds.loadSample(sig_id, idx)
+}
+
+func (ds *Dataset) GetGeneSig(geneSigId string) (dbs.GeneSig, error) {
+	s, _, err := ds.getById(geneSigId)
+	return s, err
 }
 
 func (ds *Dataset) GetSample(sampleId string) (dbs.Sample, error) {
@@ -389,6 +403,12 @@ func equal(p1, p2 []float32) bool {
 	return true
 }
 
+func (ds *Dataset) NearestGeneSigs(dims []dbs.Dimension,
+	score_filter dbs.ScoreFilter, offset, limit int) (
+	[]dbs.ScoredGeneSig, error) {
+	panic("TODO")
+}
+
 func (ds *Dataset) NearestSamples(dims []dbs.Dimension,
 	filter dbs.SampleFilter, score_filter dbs.ScoreFilter, offset, limit int) (
 	[]dbs.ScoredSample, error) {
@@ -459,7 +479,12 @@ func (ds *Dataset) NearestSamples(dims []dbs.Dimension,
 	return rv, nil
 }
 
-func (ds *Dataset) SampleSearch(name string, filter dbs.SampleFilter,
+func (ds *Dataset) SearchGeneSigs(name string, offset, limit int) (
+	[]dbs.GeneSig, error) {
+	panic("TODO")
+}
+
+func (ds *Dataset) SearchSamples(name string, filter dbs.SampleFilter,
 	offset, limit int) (rv []dbs.Sample, err error) {
 	rows, err := ds.tx.Query(
 		"SELECT sig_id FROM sig WHERE instr(lower(sig.pert_iname), ?)",
@@ -548,7 +573,7 @@ func (ds *Dataset) NearestGenesets(dims []dbs.Dimension, f dbs.ScoreFilter,
 	return gs_scores, nil
 }
 
-func (ds *Dataset) GenesetSearch(keyword string, offset, limit int) (
+func (ds *Dataset) SearchGenesets(keyword string, offset, limit int) (
 	[]dbs.Geneset, error) {
 	panic("TODO")
 }
