@@ -21,7 +21,9 @@ import (
 var (
 	listenAddr = flag.String("addr", ":8080", "address to listen on")
 
-	sampleId = whmux.NewStringArg()
+	sampleId  = whmux.NewStringArg()
+	geneSigId = whmux.NewStringArg()
+	genesetId = whmux.NewStringArg()
 )
 
 func main() {
@@ -43,21 +45,17 @@ func main() {
 		datasetMux[fmt.Sprint(id)] = whmux.Dir{
 			"": whmux.Exact(http.HandlerFunc(endpoints.Dataset)),
 
-			"sample": sampleId.ShiftOpt(
-				whmux.Dir{
-					"":         whmux.Exact(http.HandlerFunc(endpoints.Sample)),
-					"similar":  whmux.Exact(http.HandlerFunc(endpoints.Similar)),
-					"enriched": whmux.Exact(http.HandlerFunc(endpoints.Enriched)),
-				},
-				whredir.RedirectHandler(fmt.Sprintf("/dataset/%d/", id)),
-			),
+			"sample": sampleId.Shift(
+				whmux.Exact(http.HandlerFunc(endpoints.Sample))),
+			"genesig": geneSigId.Shift(
+				whmux.Exact(http.HandlerFunc(endpoints.GeneSig))),
+			"geneset": genesetId.Shift(
+				whmux.Exact(http.HandlerFunc(endpoints.Geneset))),
 
-			"search": whmux.RequireMethod("GET",
-				whmux.ExactPath(http.HandlerFunc(endpoints.Search))),
-			"nearest": whmux.RequireMethod("GET",
-				whmux.ExactPath(http.HandlerFunc(endpoints.Nearest))),
-			"enriched": whmux.RequireMethod("GET",
-				whmux.ExactPath(http.HandlerFunc(endpoints.EnrichedSearch))),
+			"search": whmux.Dir{
+				"keyword":   whmux.Exact(http.HandlerFunc(endpoints.Keyword)),
+				"signature": whmux.Exact(http.HandlerFunc(endpoints.Signature)),
+			},
 		}
 	}
 

@@ -19,22 +19,24 @@ var _ = T.MustParse(`{{ template "header" . }}
 {{end}}
 </tr></table>
 
-<ul class="nav nav-tabs">
-  <li role="presentation">
-    <a href="/dataset/{{.Page.dataset.Id}}/sample/{{.Page.sample.Id}}">Data</a>
-  </li>
-  <li role="presentation">
-    <a href="/dataset/{{.Page.dataset.Id}}/sample/{{.Page.sample.Id}}/similar">Similar Samples</a>
-  </li>
-  <li role="presentation" class="active">
-    <a>Enriched Gene Sets</a>
-  </li>
-</ul>
-
-<div class="panel panel-default">
-  <div class="panel-body">
-    {{ template "enriched_results" . }}
-  </div>
+<div style="text-align: right;">
+  <a class="btn btn-success"
+      href="/dataset/{{.Page.dataset.Id}}/search/signature?qtype=sample&id={{$Page.sample.Id}}">
+    Search by sample
+  </a>
 </div>
+
+<table class="table table-striped">
+<tr>
+  <th>Dimension</th>
+  <th>Value</th>
+</tr>
+{{ range .Page.sample.Data }}
+<tr>
+  <td>{{.Name}}</td>
+  <td>{{.Value}}</td>
+</tr>
+{{ end }}
+</table>
 
 {{ template "footer" . }}`)

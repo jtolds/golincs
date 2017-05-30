@@ -1,4 +1,4 @@
-// Copyright (C) 2016 JT Olds
+// Copyright (C) 2017 JT Olds
 // See LICENSE for copying information
 
 package dbs
@@ -32,6 +32,7 @@ type ScoredSample interface {
 }
 
 type GeneSig interface {
+	Id() string
 	Name() string
 	Data() ([]Dimension, error)
 }
@@ -42,6 +43,7 @@ type ScoredGeneSig interface {
 }
 
 type Geneset interface {
+	Id() string
 	Name() string
 	Description() string
 	Genes() []string
@@ -111,7 +113,7 @@ type Dataset interface {
 		[]ScoredGeneset, error)
 
 	SearchSamples(keyword string, filter SampleFilter, offset, limit int) (
-		[]Sample, error)
-	SearchGeneSigs(keyword string, offset, limit int) ([]GeneSig, error)
-	SearchGenesets(keyword string, offset, limit int) ([]Geneset, error)
+		[]ScoredSample, error)
+	SearchGeneSigs(keyword string, offset, limit int) ([]ScoredGeneSig, error)
+	SearchGenesets(keyword string, offset, limit int) ([]ScoredGeneset, error)
 }
