@@ -47,12 +47,12 @@ func main() {
 
 	ids := outfh.RowIds()
 	for i := range ids {
-		ids[i] = uint32(i)
+		ids[i] = mmm.Ident(i)
 	}
 
 	ids = outfh.ColIds()
 	for i := range ids {
-		ids[i] = uint32(i)
+		ids[i] = mmm.Ident(i)
 	}
 
 	rowid := -1

@@ -60,6 +60,8 @@ var _ = T.MustParse(`{{ template "header" . }}
 
   </table>
 
+  {{.Page.page_urls.Render}}
+
   </div>
 </div>
 

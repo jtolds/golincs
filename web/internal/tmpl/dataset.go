@@ -29,7 +29,7 @@ var _ = T.MustParse(`{{ template "header" . }}
 <div class="tab-content">
   <div role="tabpanel" id="topk" class="tab-pane fade in active">
 
-<form method="POST" action="/dataset/{{.Page.dataset.Id}}/nearest">
+<form method="GET" action="/dataset/{{.Page.dataset.Id}}/nearest">
 <div class="row">
 <div class="col-md-6">
   <textarea name="up-regulated" class="form-control" rows="3"
@@ -62,7 +62,7 @@ var _ = T.MustParse(`{{ template "header" . }}
   </div>
   <div role="tabpanel" id="enriched" class="tab-pane fade in">
 
-<form method="POST" action="/dataset/{{.Page.dataset.Id}}/enriched">
+<form method="GET" action="/dataset/{{.Page.dataset.Id}}/enriched">
 <div class="row">
 <div class="col-md-6">
   <textarea name="up-regulated" class="form-control" rows="3"
@@ -77,6 +77,11 @@ var _ = T.MustParse(`{{ template "header" . }}
 </div>
 <div class="row">
 <div class="col-md-12 form-inline" style="text-align:right;">
+  <div class="form-group">
+    <label for="topkInput3"><strong>k = </strong></label>
+    <input type="number" name="limit" class="form-control" id="topkInput3"
+      value="25" />
+  </div>
   <button type="submit" class="btn btn-default">Search</button>
 </div>
 </div>
@@ -85,7 +90,7 @@ var _ = T.MustParse(`{{ template "header" . }}
   </div>
   <div role="tabpanel" id="bytext" class="tab-pane fade in">
 
-<form method="POST" action="/dataset/{{.Page.dataset.Id}}/search">
+<form method="GET" action="/dataset/{{.Page.dataset.Id}}/search">
 <div class="row">
 <div class="col-md-12">
   <input type="text" name="name" class="form-control" />
@@ -122,9 +127,7 @@ var _ = T.MustParse(`{{ template "header" . }}
 {{ end }}
 </ul>
 
-{{ if (ne .Page.ctoken "") }}
-<a href="?ctoken={{.Page.ctoken}}&limit={{.Page.limit}}">Next Page</a>
-{{ end }}
+{{.Page.page_urls.Render}}
 
 </div>
 </div>

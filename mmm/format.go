@@ -13,6 +13,8 @@ import (
 	"unsafe"
 )
 
+type Ident uint32
+
 const (
 	float32Size = int(unsafe.Sizeof(float32(0)))
 	uint32Size  = int(unsafe.Sizeof(uint32(0)))
@@ -32,6 +34,16 @@ func uint32Slice(data []byte, offset, uint32count int) (rv []uint32,
 	return *(*[]uint32)(unsafe.Pointer(&h)), nextOffset
 }
 
+func identSlice(data []byte, offset, identcount int) (rv []Ident,
+	nextOffset int) {
+	nextOffset = offset + identcount*uint32Size
+	r := data[offset:nextOffset]
+	h := *(*reflect.SliceHeader)(unsafe.Pointer(&r))
+	h.Len /= uint32Size
+	h.Cap = h.Len
+	return *(*[]Ident)(unsafe.Pointer(&h)), nextOffset
+}
+
 func float32Slice(data []byte, offset, float32count int) (rv []float32,
 	nextOffset int) {
 	nextOffset = offset + float32count*float32Size
@@ -47,11 +59,11 @@ type Handle struct {
 	data []byte
 
 	rows, cols     int
-	rowIds, colIds []uint32
+	rowIds, colIds []Ident
 	floats         []float32
 
 	rowIdxOnce, colIdxOnce sync.Once
-	rowIdToIdx, colIdToIdx map[uint32]int
+	rowIdToIdx, colIdToIdx map[Ident]int
 }
 
 func Create(path string, rows, cols int64) (rv *Handle, err error) {
@@ -153,22 +165,22 @@ func Open(path string) (h *Handle, err error) {
 	}
 	h.data = data
 
-	h.rowIds, offset = uint32Slice(data, offset, h.rows)
-	h.colIds, offset = uint32Slice(data, offset, h.cols)
+	h.rowIds, offset = identSlice(data, offset, h.rows)
+	h.colIds, offset = identSlice(data, offset, h.cols)
 	h.floats, _ = float32Slice(data, offset, h.rows*h.cols)
 
 	return h, nil
 }
 
 func (h *Handle) rowIndex() {
-	h.rowIdToIdx = make(map[uint32]int, len(h.rowIds))
+	h.rowIdToIdx = make(map[Ident]int, len(h.rowIds))
 	for idx, id := range h.rowIds {
 		h.rowIdToIdx[id] = idx
 	}
 }
 
 func (h *Handle) colIndex() {
-	h.colIdToIdx = make(map[uint32]int, len(h.colIds))
+	h.colIdToIdx = make(map[Ident]int, len(h.colIds))
 	for idx, id := range h.colIds {
 		h.colIdToIdx[id] = idx
 	}
@@ -200,7 +212,7 @@ func (h *Handle) RowByIdx(idx int) []float32 {
 	return h.floats[h.cols*idx : h.cols*(idx+1)]
 }
 
-func (h *Handle) RowById(id uint32) (row []float32, found bool) {
+func (h *Handle) RowById(id Ident) (row []float32, found bool) {
 	idx, found := h.RowIdxById(id)
 	if !found {
 		return nil, false
@@ -208,11 +220,11 @@ func (h *Handle) RowById(id uint32) (row []float32, found bool) {
 	return h.RowByIdx(idx), true
 }
 
-func (h *Handle) RowIds() []uint32 {
+func (h *Handle) RowIds() []Ident {
 	return h.rowIds
 }
 
-func (h *Handle) ColIds() []uint32 {
+func (h *Handle) ColIds() []Ident {
 	return h.colIds
 }
 
@@ -224,27 +236,21 @@ func (h *Handle) Cols() int {
 	return h.cols
 }
 
-func (h *Handle) RowIdByIdx(idx int) (id uint32, found bool) {
-	if idx < 0 || idx >= len(h.rowIds) {
-		return 0, false
-	}
-	return h.rowIds[idx], true
+func (h *Handle) RowIdByIdx(idx int) Ident {
+	return h.rowIds[idx]
 }
 
-func (h *Handle) ColIdByIdx(idx int) (id uint32, found bool) {
-	if idx < 0 || idx >= len(h.rowIds) {
-		return 0, false
-	}
-	return h.rowIds[idx], true
+func (h *Handle) ColIdByIdx(idx int) Ident {
+	return h.colIds[idx]
 }
 
-func (h *Handle) RowIdxById(id uint32) (idx int, found bool) {
+func (h *Handle) RowIdxById(id Ident) (idx int, found bool) {
 	h.rowIdxOnce.Do(h.rowIndex)
 	idx, found = h.rowIdToIdx[id]
 	return idx, found
 }
 
-func (h *Handle) ColIdxById(id uint32) (idx int, found bool) {
+func (h *Handle) ColIdxById(id Ident) (idx int, found bool) {
 	h.colIdxOnce.Do(h.colIndex)
 	idx, found = h.colIdToIdx[id]
 	return idx, found

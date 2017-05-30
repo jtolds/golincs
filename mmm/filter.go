@@ -14,7 +14,7 @@ func shouldKeep(selected, invert bool) bool {
 	return !selected
 }
 
-func filterIds(dst, src []uint32, selected map[int]struct{}, invert bool) {
+func filterIds(dst, src []Ident, selected map[int]struct{}, invert bool) {
 	dst_idx := 0
 	for src_idx, id := range src {
 		if _, s := selected[src_idx]; shouldKeep(s, invert) {
@@ -25,8 +25,8 @@ func filterIds(dst, src []uint32, selected map[int]struct{}, invert bool) {
 }
 
 func Filter(dst_path, src_path string,
-	row_ids_selected []uint32, rows_inverted bool,
-	col_ids_selected []uint32, cols_inverted bool) error {
+	row_ids_selected []Ident, rows_inverted bool,
+	col_ids_selected []Ident, cols_inverted bool) error {
 
 	src, err := Open(src_path)
 	if err != nil {

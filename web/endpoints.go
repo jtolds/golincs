@@ -32,16 +32,16 @@ func (a *Endpoints) sample(ctx context.Context) dbs.Sample {
 }
 
 func (a *Endpoints) Dataset(w http.ResponseWriter, r *http.Request) {
+	offset := whparse.OptInt(r.FormValue("offset"), 0)
 	limit := whparse.OptInt(r.FormValue("limit"), 30)
-	samples, ctoken, err := a.data.List(r.FormValue("ctoken"), limit)
+	samples, err := a.data.List(offset, limit)
 	if err != nil {
 		whfatal.Error(err)
 	}
 	Render("dataset", map[string]interface{}{
-		"dataset": a.data,
-		"ctoken":  ctoken,
-		"limit":   limit,
-		"samples": samples,
+		"dataset":   a.data,
+		"page_urls": newPageURLs(r, offset, limit, a.data.Samples()),
+		"samples":   samples,
 	})
 }
 
@@ -59,15 +59,17 @@ func (a *Endpoints) Similar(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		whfatal.Error(err)
 	}
-	nearest, err := a.data.Nearest(dims, nil, nil,
-		whparse.OptInt(r.FormValue("limit"), 30))
+	offset := whparse.OptInt(r.FormValue("offset"), 0)
+	limit := whparse.OptInt(r.FormValue("limit"), 30)
+	nearest, err := a.data.Nearest(dims, nil, nil, offset, limit)
 	if err != nil {
 		whfatal.Error(err)
 	}
 	Render("similar", map[string]interface{}{
-		"dataset": a.data,
-		"sample":  sample,
-		"nearest": nearest,
+		"dataset":   a.data,
+		"page_urls": newPageURLs(r, offset, limit, a.data.Samples()),
+		"sample":    sample,
+		"nearest":   nearest,
 	})
 }
 
@@ -77,14 +79,17 @@ func (a *Endpoints) Enriched(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		whfatal.Error(err)
 	}
-	enriched, err := a.data.Enriched(dims)
+	offset := whparse.OptInt(r.FormValue("offset"), 0)
+	limit := whparse.OptInt(r.FormValue("limit"), 30)
+	enriched, err := a.data.Enriched(dims, offset, limit)
 	if err != nil {
 		whfatal.Error(err)
 	}
 	Render("enriched", map[string]interface{}{
-		"dataset":  a.data,
-		"sample":   sample,
-		"enriched": enriched,
+		"dataset":   a.data,
+		"page_urls": newPageURLs(r, offset, limit, a.data.Genesets()),
+		"sample":    sample,
+		"enriched":  enriched,
 	})
 }
 
@@ -135,15 +140,18 @@ func (a *Endpoints) Nearest(w http.ResponseWriter, r *http.Request) {
 		whfatal.Error(err)
 	}
 
+	offset := whparse.OptInt(r.FormValue("offset"), 0)
+	limit := whparse.OptInt(r.FormValue("limit"), 30)
 	nearest, err := a.data.Nearest(dims, dbs.CombineSampleFilters(filters...),
-		nil, whparse.OptInt(r.FormValue("limit"), 30))
+		nil, offset, limit)
 	if err != nil {
 		whfatal.Error(err)
 	}
 
 	Render("results", map[string]interface{}{
-		"dataset": a.data,
-		"results": nearest,
+		"dataset":   a.data,
+		"page_urls": newPageURLs(r, offset, limit, a.data.Samples()),
+		"results":   nearest,
 	})
 }
 
@@ -152,13 +160,16 @@ func (a *Endpoints) EnrichedSearch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		whfatal.Error(err)
 	}
-	enriched, err := a.data.Enriched(dims)
+	offset := whparse.OptInt(r.FormValue("offset"), 0)
+	limit := whparse.OptInt(r.FormValue("limit"), 30)
+	enriched, err := a.data.Enriched(dims, offset, limit)
 	if err != nil {
 		whfatal.Error(err)
 	}
-	Render("enriched_results", map[string]interface{}{
-		"dataset":  a.data,
-		"enriched": enriched,
+	Render("enriched_search", map[string]interface{}{
+		"dataset":   a.data,
+		"page_urls": newPageURLs(r, offset, limit, a.data.Genesets()),
+		"enriched":  enriched,
 	})
 }
 
@@ -167,14 +178,16 @@ func (a *Endpoints) Search(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		whfatal.Error(wherr.BadRequest.New("no name provided"))
 	}
-	results, err := a.data.Search(name, nil,
-		whparse.OptInt(r.FormValue("limit"), 30))
+	offset := whparse.OptInt(r.FormValue("offset"), 0)
+	limit := whparse.OptInt(r.FormValue("limit"), 30)
+	results, err := a.data.Search(name, nil, offset, limit)
 	if err != nil {
 		whfatal.Error(err)
 	}
 
 	Render("results", map[string]interface{}{
-		"dataset": a.data,
-		"results": results,
+		"dataset":   a.data,
+		"page_urls": newPageURLs(r, offset, limit, -1),
+		"results":   results,
 	})
 }

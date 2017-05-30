@@ -33,20 +33,7 @@ var _ = T.MustParse(`{{ template "header" . }}
 
 <div class="panel panel-default">
   <div class="panel-body">
-
-  <table class="table table-striped">
-
-  <tr>
-    <th>Id</th>
-    <th>Name</th>
-    {{ range .Page.dataset.TagNames }}
-    <th>{{.}}</th>
-    {{end}}
-    <th>Score</th>
-  </tr>
-
-  </table>
-
+    {{ template "enriched_results" . }}
   </div>
 </div>
 

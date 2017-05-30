@@ -52,16 +52,26 @@ type Dataset interface {
 	Name() string
 	Dimensions() int
 	Samples() int
+	Genesets() int
 	DimMax() float64
 	TagNames() []string
 
-	List(ctoken string, limit int) (
-		samples []Sample, ctokenout string, err error)
+	List(offset, limit int) (samples []Sample, err error)
 	Get(sampleId string) (Sample, error)
-	Nearest(dims []Dimension, f1 SampleFilter, f2 ScoreFilter, limit int) (
+	Nearest(dims []Dimension, f1 SampleFilter, f2 ScoreFilter,
+		offset, limit int) ([]ScoredSample, error)
+	Search(name string, filter SampleFilter, offset, limit int) (
 		[]ScoredSample, error)
-	Search(name string, filter SampleFilter, limit int) ([]ScoredSample, error)
-	Enriched(dims []Dimension) ([]GeneSet, error)
+	Enriched(dims []Dimension, offset, limit int) ([]ScoredGeneset, error)
 }
 
-type GeneSet interface{}
+type Geneset interface {
+	Name() string
+	Description() string
+	Genes() []string
+}
+
+type ScoredGeneset interface {
+	Geneset
+	Score() float64
+}

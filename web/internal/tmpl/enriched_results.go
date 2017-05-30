@@ -3,22 +3,20 @@
 
 package tmpl
 
-var _ = T.MustParse(`{{ template "header" . }}
-
-<h1>Dataset: <a href="/dataset/{{.Page.dataset.Id}}">{{.Page.dataset.Name}}</a></h1>
-
-<h2>Search results</h2>
-
-<table class="table table-striped">
+var _ = T.MustParse(`<table class="table table-striped">
 <tr>
-<th>Id</th>
-<th>Name</th>
-{{ range .Page.dataset.TagNames }}
-<th>{{.}}</th>
-{{end}}
-<th>Score</th></tr>
+  <th>Name</th>
+  <th>Score</th>
+</tr>
 
-{{ $page := .Page }}
+{{ range .Page.enriched }}
+<tr>
+  <td>{{.Name}}</td>
+  <td>{{.Score}}</td>
+</tr>
+{{ end }}
+
 </table>
 
-{{ template "footer" . }}`)
+{{.Page.page_urls.Render}}
+`)

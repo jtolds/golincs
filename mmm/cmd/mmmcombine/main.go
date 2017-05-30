@@ -15,7 +15,7 @@ var (
 		"if true, combine by adding columns instead of rows")
 )
 
-func equal(a, b []uint32) bool {
+func equal(a, b []mmm.Ident) bool {
 	if len(a) != len(b) {
 		return false
 	}

@@ -114,7 +114,7 @@ func main() {
 		panic(err)
 	}
 
-	var groups [][]uint32
+	var groups [][]mmm.Ident
 	scanner := bufio.NewScanner(groupfh)
 	scanner.Buffer(nil, int(stat.Size()))
 	for scanner.Scan() {
@@ -122,7 +122,7 @@ func main() {
 		if len(line) == 0 {
 			continue
 		}
-		var group []uint32
+		var group []mmm.Ident
 		for _, part := range strings.Split(line, ",") {
 			part = strings.TrimSpace(part)
 			if len(part) == 0 {
@@ -132,15 +132,15 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			if _, found := inputfh.RowIdxById(uint32(id)); !found {
+			if _, found := inputfh.RowIdxById(mmm.Ident(id)); !found {
 				continue
 			}
-			group = append(group, uint32(id))
+			group = append(group, mmm.Ident(id))
 		}
 		if len(group) == 0 {
 			continue
 		}
-		sort.Sort(uint32Sorter(group))
+		sort.Sort(identSorter(group))
 		groups = append(groups, group)
 	}
 
@@ -186,11 +186,11 @@ func main() {
 	}
 }
 
-type uint32Sorter []uint32
+type identSorter []mmm.Ident
 
-func (u uint32Sorter) Len() int           { return len(u) }
-func (u uint32Sorter) Less(i, j int) bool { return u[i] < u[j] }
-func (u uint32Sorter) Swap(i, j int)      { u[i], u[j] = u[j], u[i] }
+func (u identSorter) Len() int           { return len(u) }
+func (u identSorter) Less(i, j int) bool { return u[i] < u[j] }
+func (u identSorter) Swap(i, j int)      { u[i], u[j] = u[j], u[i] }
 
 type float32Sorter []float32
 

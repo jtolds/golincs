@@ -46,6 +46,8 @@ func NewDummyDataset(name string) Dataset {
 	return &dummySet{name: name, samples: samples}
 }
 
+var _ Dataset = (*dummySet)(nil)
+
 func (d *dummySet) Name() string { return d.name }
 
 func (d *dummySet) Dimensions() int {
@@ -53,22 +55,28 @@ func (d *dummySet) Dimensions() int {
 	return len(dims)
 }
 
-func (d *dummySet) Samples() int { return len(d.samples) }
+func (d *dummySet) Samples() int  { return len(d.samples) }
+func (d *dummySet) Genesets() int { return 0 }
 
 func (d *dummySet) TagNames() []string {
 	return []string{"Tag Default", "Specific tag"}
 }
 
-func (d *dummySet) List(ctoken string, limit int) (
-	samples []Sample, ctokenout string, err error) {
+func (d *dummySet) List(offset, limit int) (samples []Sample, err error) {
+	if offset != 0 {
+		if offset < len(d.samples) {
+			return nil, wherr.BadRequest.New("offset too small")
+		}
+		return nil, nil
+	}
 	if limit < len(d.samples) {
-		return nil, "", wherr.BadRequest.New("limit too small")
+		return nil, wherr.BadRequest.New("limit too small")
 	}
 	var rv []Sample
 	for i := range d.samples {
 		rv = append(rv, &d.samples[i])
 	}
-	return rv, "", nil
+	return rv, nil
 }
 
 func (d *dummySet) Get(sampleId string) (Sample, error) {
@@ -81,10 +89,11 @@ func (d *dummySet) Get(sampleId string) (Sample, error) {
 }
 
 func (d *dummySet) Nearest(dims []Dimension, f1 SampleFilter,
-	f2 ScoreFilter, limit int) ([]ScoredSample, error) {
+	f2 ScoreFilter, offset, limit int) ([]ScoredSample, error) {
 	var rv []ScoredSample
+	found := 0
 	for i := range d.samples {
-		if i >= limit {
+		if len(rv) >= limit {
 			break
 		}
 		if f1 != nil && !f1(&d.samples[i]) {
@@ -93,20 +102,29 @@ func (d *dummySet) Nearest(dims []Dimension, f1 SampleFilter,
 		if f2 != nil && !f2(d.samples[i].Score()) {
 			continue
 		}
+		if found < offset {
+			found++
+			continue
+		}
 		rv = append(rv, &d.samples[i])
 	}
 	return rv, nil
 }
 
-func (d *dummySet) Search(name string, filter SampleFilter, limit int) (
-	[]ScoredSample, error) {
+func (d *dummySet) Search(name string, filter SampleFilter,
+	offset, limit int) ([]ScoredSample, error) {
 	var rv []ScoredSample
+	found := 0
 	for i := range d.samples {
-		if i >= limit {
+		if len(rv) >= limit {
 			break
 		}
 		if strings.Contains(d.samples[i].Name(), name) {
 			if filter == nil || filter(&d.samples[i]) {
+				if found < offset {
+					found++
+					continue
+				}
 				rv = append(rv, &d.samples[i])
 			}
 		}
@@ -116,7 +134,7 @@ func (d *dummySet) Search(name string, filter SampleFilter, limit int) (
 
 func (d *dummySet) DimMax() float64 { return 10 }
 
-func (d *dummySet) Enriched(dims []Dimension) (
-	[]GeneSet, error) {
+func (d *dummySet) Enriched(dims []Dimension, offset, limit int) (
+	[]ScoredGeneset, error) {
 	return nil, nil
 }

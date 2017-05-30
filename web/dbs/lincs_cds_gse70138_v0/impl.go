@@ -232,17 +232,20 @@ func (d *Dataset) Dimensions() int { return dimensions }
 func (d *Dataset) Samples() int    { return samples }
 func (d *Dataset) DimMax() float64 { return 1 }
 
-func (d *Dataset) List(ctoken string, limit int) (
-	samples []dbs.Sample, ctokenout string, err error) {
-	result, ctokenout, err := d.db.PagedGetSamples(ctoken, limit)
+func (d *Dataset) List(offset, limit int) (
+	samples []dbs.Sample, err error) {
+	if offset != 0 {
+		return nil, fmt.Errorf("implementation does not support offset")
+	}
+	result, _, err := d.db.PagedGetSamples("", limit)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	samples = make([]dbs.Sample, 0, len(result))
 	for _, meta := range result {
 		samples = append(samples, &Sample{meta: meta, d: d})
 	}
-	return samples, ctokenout, nil
+	return samples, nil
 }
 
 func (d *Dataset) Get(sampleId string) (dbs.Sample, error) {
@@ -254,7 +257,7 @@ func (d *Dataset) Get(sampleId string) (dbs.Sample, error) {
 }
 
 func (d *Dataset) Nearest(dims []dbs.Dimension, filter dbs.SampleFilter,
-	score_filter dbs.ScoreFilter, limit int) (
+	score_filter dbs.ScoreFilter, offset, limit int) (
 	rv []dbs.ScoredSample, err error) {
 	var p pos
 	for _, dim := range dims {
@@ -270,10 +273,11 @@ func (d *Dataset) Nearest(dims []dbs.Dimension, filter dbs.SampleFilter,
 		}
 		return filter(&Sample{meta: meta, d: d}), nil
 	}
-	points, err := nearestParallel(p, limit, d.points, d.names, newFilter)
+	points, err := nearestParallel(p, offset+limit, d.points, d.names, newFilter)
 	if err != nil {
 		return nil, err
 	}
+	skipped := 0
 	for _, pd := range points {
 		if pd.Distance == 0 {
 			continue
@@ -282,19 +286,24 @@ func (d *Dataset) Nearest(dims []dbs.Dimension, filter dbs.SampleFilter,
 		if err != nil {
 			return nil, err
 		}
+		if skipped < offset {
+			skipped++
+			continue
+		}
 		rv = append(rv, &Sample{meta: meta, d: d, score: pd.Distance})
 	}
 	return rv, nil
 }
 
-func (d *Dataset) Search(name string, filter dbs.SampleFilter, limit int) (
-	rv []dbs.ScoredSample, err error) {
+func (d *Dataset) Search(name string, filter dbs.SampleFilter,
+	offset, limit int) (rv []dbs.ScoredSample, err error) {
 	// TODO: make this whole function efficient
 	name = strings.ToLower(name)
 	samples, err := d.db.GetSamples()
 	if err != nil {
 		return nil, err
 	}
+	skipped := 0
 	for _, sample := range samples {
 		if strings.Contains(strings.ToLower(sample.Batch.String), name) ||
 			strings.Contains(strings.ToLower(sample.CellId.String), name) ||
@@ -309,6 +318,10 @@ func (d *Dataset) Search(name string, filter dbs.SampleFilter, limit int) (
 			strings.Contains(strings.ToLower(sample.SigId), name) {
 			s := &Sample{meta: sample, d: d, score: 1}
 			if filter != nil && !filter(s) {
+				continue
+			}
+			if skipped < offset {
+				skipped++
 				continue
 			}
 			rv = append(rv, s)
@@ -361,7 +374,9 @@ func (d *Dataset) TagNames() []string {
 		"pert_id", "pert_time", "pert_type", "replicate_count"}
 }
 
-func (d *Dataset) Enriched(dims []dbs.Dimension) (
-	[]dbs.GeneSet, error) {
+func (d *Dataset) Enriched(dims []dbs.Dimension, offset, limit int) (
+	[]dbs.ScoredGeneset, error) {
 	return nil, nil
 }
+
+func (d *Dataset) Genesets() int { return 0 }

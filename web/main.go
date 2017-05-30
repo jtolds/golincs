@@ -66,11 +66,11 @@ func main() {
 				whredir.RedirectHandler(fmt.Sprintf("/dataset/%d/", id)),
 			),
 
-			"search": whmux.RequireMethod("POST",
+			"search": whmux.RequireMethod("GET",
 				whmux.ExactPath(http.HandlerFunc(endpoints.Search))),
-			"nearest": whmux.RequireMethod("POST",
+			"nearest": whmux.RequireMethod("GET",
 				whmux.ExactPath(http.HandlerFunc(endpoints.Nearest))),
-			"enriched": whmux.RequireMethod("POST",
+			"enriched": whmux.RequireMethod("GET",
 				whmux.ExactPath(http.HandlerFunc(endpoints.EnrichedSearch))),
 		}
 	}

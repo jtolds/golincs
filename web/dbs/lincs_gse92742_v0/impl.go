@@ -4,19 +4,20 @@
 package lincs_gse92742_v0
 
 import (
+	"bufio"
 	"container/heap"
 	"database/sql"
 	"flag"
-	"fmt"
+	"io"
 	"math"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/jtolds/golincs/mmm"
 	"github.com/jtolds/golincs/web/dbs"
 	"github.com/spacemonkeygo/errors"
+	"github.com/spacemonkeygo/spacelog"
 )
 
 var (
@@ -26,16 +27,42 @@ var (
 	data   = flag.String("gse92742.data",
 		"/home/jt/school/bio/gse92742/filtered-unit-sh_and_oe-grouped.mmap",
 		"path to the data")
+	msigdb = flag.String("gse92742.msigdb",
+		"/home/jt/school/bio/msigdb.v6.0.symbols.gmt", "gene set file (gmt)")
 	enrichmentAngle = flag.Float64("gse92742.angle", 0, "")
+
+	logger = spacelog.GetLogger()
 )
+
+type geneset struct {
+	name  string
+	desc  string
+	genes []string
+}
+
+func (g *geneset) Name() string        { return g.name }
+func (g *geneset) Description() string { return g.desc }
+func (g *geneset) Genes() []string {
+	return append([]string(nil), g.genes...)
+}
+
+type scoredGeneset struct {
+	*geneset
+	score float64
+}
+
+func (s *scoredGeneset) Score() float64 { return s.score }
 
 type Dataset struct {
 	db           *sql.DB
 	tx           *sql.Tx
-	mmm          *mmm.Handle
+	samples      *mmm.Handle
 	dimensionMap []string
 	idxMap       map[string]int
+	genesets     []*geneset
 }
+
+var _ dbs.Dataset = (*Dataset)(nil)
 
 func New() (*Dataset, error) {
 	ds := &Dataset{}
@@ -61,7 +88,7 @@ func New() (*Dataset, error) {
 	if err != nil {
 		return nil, err
 	}
-	ds.mmm = fh
+	ds.samples = fh
 
 	ds.dimensionMap = make([]string, fh.Cols())
 	ds.idxMap = make(map[string]int, fh.Cols())
@@ -72,7 +99,7 @@ func New() (*Dataset, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var id uint32
+		var id mmm.Ident
 		var gene_id string
 		err = rows.Scan(&id, &gene_id)
 		if err != nil {
@@ -99,15 +126,61 @@ func New() (*Dataset, error) {
 		return nil, err
 	}
 
+	okay_genes := map[string]struct{}{}
+	for i := 0; i < ds.samples.Rows(); i++ {
+		s, err := ds.getByIdx(i)
+		if err != nil {
+			return nil, err
+		}
+		okay_genes[s.name] = struct{}{}
+	}
+
+	gsfh, err := os.Open(*msigdb)
+	if err != nil {
+		return nil, err
+	}
+	defer gsfh.Close()
+
+	gsfhb := bufio.NewReader(gsfh)
+	possible := 0
+	for {
+		line, err := gsfhb.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+		parts := strings.Split(strings.TrimSpace(line), "\t")
+		if len(parts) > 2 {
+			possible += 1
+			var cleaned []string
+			for _, gene := range parts[2:] {
+				if _, exists := okay_genes[gene]; exists {
+					cleaned = append(cleaned, gene)
+				}
+			}
+			if len(cleaned) > 0 {
+				ds.genesets = append(ds.genesets, &geneset{
+					name:  parts[0],
+					desc:  parts[1],
+					genes: cleaned,
+				})
+			}
+		}
+		if err == io.EOF {
+			break
+		}
+	}
+	logger.Noticef("loaded %d genesets out of %d possible\n",
+		len(ds.genesets), possible)
+
 	success = true
 	return ds, nil
 }
 
 func (ds *Dataset) Close() error {
 	var errs errors.ErrorGroup
-	if ds.mmm != nil {
-		errs.Add(ds.mmm.Close())
-		ds.mmm = nil
+	if ds.samples != nil {
+		errs.Add(ds.samples.Close())
+		ds.samples = nil
 	}
 	if ds.tx != nil {
 		errs.Add(ds.tx.Rollback())
@@ -121,7 +194,7 @@ func (ds *Dataset) Close() error {
 }
 
 func (ds *Dataset) getValues(sample_idx int) []float32 {
-	return ds.mmm.RowByIdx(sample_idx)
+	return ds.samples.RowByIdx(sample_idx)
 }
 
 func (ds *Dataset) Name() string {
@@ -129,11 +202,11 @@ func (ds *Dataset) Name() string {
 }
 
 func (ds *Dataset) Dimensions() int {
-	return ds.mmm.Cols()
+	return ds.samples.Cols()
 }
 
 func (ds *Dataset) Samples() int {
-	return ds.mmm.Rows()
+	return ds.samples.Rows()
 }
 
 func (ds *Dataset) DimMax() float64 { return 1 }
@@ -167,26 +240,15 @@ func (s *sample) Data() ([]dbs.Dimension, error) {
 	return rv, nil
 }
 
-func (ds *Dataset) List(ctoken string, limit int) (
-	samples []dbs.Sample, ctokenout string, err error) {
-
-	var offset int
-	if ctoken != "" {
-		offset, err = strconv.Atoi(ctoken)
-		if err != nil {
-			return nil, "", err
-		}
-	}
-
-	for i := offset; i < offset+limit && i < ds.mmm.Rows(); i++ {
+func (ds *Dataset) List(offset, limit int) (samples []dbs.Sample, err error) {
+	for i := offset; i < offset+limit && i < ds.samples.Rows(); i++ {
 		s, err := ds.getByIdx(i)
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 		samples = append(samples, s)
 	}
-
-	return samples, fmt.Sprint(offset + limit), nil
+	return samples, nil
 }
 
 func (ds *Dataset) loadSample(sig_id string, idx int) (*sample, error) {
@@ -216,10 +278,7 @@ func (ds *Dataset) loadSample(sig_id string, idx int) (*sample, error) {
 
 func (ds *Dataset) getByIdx(idx int) (*sample, error) {
 	var sig_id string
-	id, found := ds.mmm.RowIdByIdx(idx)
-	if !found {
-		return nil, fmt.Errorf("idx %d not found", idx)
-	}
+	id := ds.samples.RowIdByIdx(idx)
 	err := ds.tx.QueryRow("SELECT sig_id FROM signatures WHERE id = ?", id).
 		Scan(&sig_id)
 	if err != nil {
@@ -234,13 +293,13 @@ func (ds *Dataset) Get(sampleId string) (dbs.Sample, error) {
 }
 
 func (ds *Dataset) getById(sig_id string) (s *sample, found bool, err error) {
-	var id uint32
+	var id mmm.Ident
 	err = ds.tx.QueryRow("SELECT id FROM signatures WHERE sig_id = ?",
 		sig_id).Scan(&id)
 	if err != nil {
 		return nil, false, err
 	}
-	idx, found := ds.mmm.RowIdxById(id)
+	idx, found := ds.samples.RowIdxById(id)
 	if !found {
 		return nil, false, nil
 	}
@@ -324,9 +383,9 @@ func equal(p1, p2 []float32) bool {
 }
 
 func (ds *Dataset) Nearest(dims []dbs.Dimension, filter dbs.SampleFilter,
-	score_filter dbs.ScoreFilter, limit int) ([]dbs.ScoredSample, error) {
+	score_filter dbs.ScoreFilter, offset, limit int) ([]dbs.ScoredSample, error) {
 
-	query := make([]float32, ds.mmm.Cols())
+	query := make([]float32, ds.samples.Cols())
 	for _, dim := range dims {
 		if idx, found := ds.idxMap[dim.Name]; found {
 			query[idx] = float32(dim.Value)
@@ -334,9 +393,9 @@ func (ds *Dataset) Nearest(dims []dbs.Dimension, filter dbs.SampleFilter,
 	}
 	normalize(query)
 
-	h := make(minHeap, 0, limit)
+	h := make(minHeap, 0, offset+limit)
 	heap.Push(&h, sampleScore{idx: -1, score: math.Inf(-1)})
-	for i := 0; i < ds.mmm.Rows() || i < 1; i++ {
+	for i := 0; i < ds.samples.Rows() || i < 1; i++ {
 		vals := ds.getValues(i)
 		score := unitCosineSimilarity(query, vals)
 		if score <= h[0].score || equal(query, vals) {
@@ -370,6 +429,7 @@ func (ds *Dataset) Nearest(dims []dbs.Dimension, filter dbs.SampleFilter,
 	sort.Sort(sort.Reverse(&h))
 
 	rv := make([]dbs.ScoredSample, 0, len(h))
+	found := 0
 	for _, el := range h {
 		if el.idx == -1 {
 			continue
@@ -381,14 +441,18 @@ func (ds *Dataset) Nearest(dims []dbs.Dimension, filter dbs.SampleFilter,
 			}
 			el.Sample = s
 		}
+		if found < offset {
+			found++
+			continue
+		}
 		rv = append(rv, el)
 	}
 
 	return rv, nil
 }
 
-func (ds *Dataset) Search(name string, filter dbs.SampleFilter, limit int) (
-	rv []dbs.ScoredSample, err error) {
+func (ds *Dataset) Search(name string, filter dbs.SampleFilter,
+	offset, limit int) (rv []dbs.ScoredSample, err error) {
 	rows, err := ds.tx.Query(
 		"SELECT sig_id FROM sig WHERE instr(lower(sig.pert_iname), ?)",
 		strings.ToLower(name))
@@ -397,6 +461,7 @@ func (ds *Dataset) Search(name string, filter dbs.SampleFilter, limit int) (
 	}
 	defer rows.Close()
 
+	skipped := 0
 	for rows.Next() {
 		var sig_id string
 		err = rows.Scan(&sig_id)
@@ -416,6 +481,11 @@ func (ds *Dataset) Search(name string, filter dbs.SampleFilter, limit int) (
 			continue
 		}
 
+		if skipped < offset {
+			skipped++
+			continue
+		}
+
 		rv = append(rv, sampleScore{idx: s.idx, score: 1, Sample: s})
 		if len(rv) >= limit {
 			return rv, nil
@@ -424,6 +494,53 @@ func (ds *Dataset) Search(name string, filter dbs.SampleFilter, limit int) (
 
 	return rv, nil
 }
+
+func (ds *Dataset) Enriched(dims []dbs.Dimension, offset, limit int) (
+	[]dbs.ScoredGeneset, error) {
+	angle := *enrichmentAngle / 2
+	filter := func(score float64) bool {
+		return score >= angle || score <= -angle
+	}
+	if angle == 0 {
+		filter = nil
+	}
+	data, err := ds.Nearest(dims, nil, filter, 0, ds.samples.Rows())
+	if err != nil {
+		return nil, err
+	}
+
+	scores := make(map[string]float64, len(data))
+	for _, s := range data {
+		scores[s.Name()] = s.Score()
+	}
+
+	gs_scores := make([]dbs.ScoredGeneset, 0, len(scores))
+	for _, gs := range ds.genesets {
+		var score float64
+		for _, gene := range gs.genes {
+			score += scores[gene]
+		}
+		score /= float64(len(gs.genes))
+		gs_scores = append(gs_scores, &scoredGeneset{
+			geneset: gs,
+			score:   score,
+		})
+	}
+	sort.Sort(scoredGenesetSorter(gs_scores))
+
+	if offset >= len(gs_scores) {
+		return nil, nil
+	}
+	gs_scores = gs_scores[offset:]
+
+	if len(gs_scores) > limit {
+		gs_scores = gs_scores[:limit]
+	}
+
+	return gs_scores, nil
+}
+
+func (ds *Dataset) Genesets() int { return len(ds.genesets) }
 
 type dimensionValueSorter []dbs.Dimension
 
@@ -441,49 +558,10 @@ func (d dimensionNameSorter) Less(i, j int) bool {
 	return d[i].Name < d[j].Name
 }
 
-func (ds *Dataset) Enriched(dims []dbs.Dimension) (
-	[]dbs.GeneSet, error) {
-	angle := *enrichmentAngle / 2
-	filter := func(score float64) bool {
-		return score >= angle || score <= -angle
-	}
-	if angle == 0 {
-		filter = nil
-	}
-	data, err := ds.Nearest(dims, nil, filter, ds.mmm.Rows())
-	if err != nil {
-		return nil, err
-	}
-	fh, err := os.Create("/tmp/test-data.out")
-	if err != nil {
-		return nil, err
-	}
-	_, err = fmt.Fprintf(fh, "\tBaseline\tSignature\n")
-	if err != nil {
-		return nil, err
-	}
-	for _, thing := range data {
-		_, err = fmt.Fprintf(fh, "%s\t0\t%f\n", thing.Name(), thing.Score())
-		if err != nil {
-			return nil, err
-		}
-	}
-	err = fh.Close()
-	if err != nil {
-		return nil, err
-	}
-	fh, err = os.Create("/tmp/test-classes.out")
-	if err != nil {
-		return nil, err
-	}
-	_, err = fmt.Fprintf(fh, "Baseline\tBaseline\nSignature\tSignature\n")
-	if err != nil {
-		return nil, err
-	}
-	err = fh.Close()
-	if err != nil {
-		return nil, err
-	}
+type scoredGenesetSorter []dbs.ScoredGeneset
 
-	return nil, nil
+func (d scoredGenesetSorter) Len() int      { return len(d) }
+func (d scoredGenesetSorter) Swap(i, j int) { d[i], d[j] = d[j], d[i] }
+func (d scoredGenesetSorter) Less(i, j int) bool {
+	return d[i].Score() > d[j].Score()
 }

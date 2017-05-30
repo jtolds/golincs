@@ -32,8 +32,8 @@ var (
 		"col_keep", false, "if true, keep the columns, instead of removing them")
 )
 
-func getIds(flagval, path string) []uint32 {
-	var ids []uint32
+func getIds(flagval, path string) []mmm.Ident {
+	var ids []mmm.Ident
 	add := func(part string) {
 		part = strings.TrimSpace(part)
 		if len(part) == 0 {
@@ -43,7 +43,7 @@ func getIds(flagval, path string) []uint32 {
 		if err != nil {
 			panic(err)
 		}
-		ids = append(ids, uint32(id))
+		ids = append(ids, mmm.Ident(id))
 	}
 
 	for _, part := range strings.Split(flagval, ",") {
