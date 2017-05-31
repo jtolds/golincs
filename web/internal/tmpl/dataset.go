@@ -47,7 +47,17 @@ var _ = T.MustParse(`{{ template "header" . }}
     <label for="filters"><strong>filters: </strong></label>
     <input type="text" name="filters" class="form-control" id="filters" />
   </div>
-  <button type="submit" class="btn btn-default">Search</button>
+  <div class="btn-group" data-toggle="buttons">
+    <label class="btn btn-default active">
+      <input type="radio" name="direct" value="yes"
+          autocomplete="off" checked> Direct measurement
+    </label>
+    <label class="btn btn-default">
+      <input type="radio" name="direct" value="no"
+          autocomplete="off"> Signature combination
+    </label>
+  </div>
+  <button type="submit" class="btn btn-primary">Search</button>
 </div>
 </div>
 </form>
@@ -63,7 +73,7 @@ var _ = T.MustParse(`{{ template "header" . }}
 </div>
 <div class="row">
 <div class="col-md-12 form-inline" style="text-align:right;">
-  <button type="submit" class="btn btn-default">Search</button>
+  <button type="submit" class="btn btn-primary">Search</button>
 </div>
 </div>
 </form>

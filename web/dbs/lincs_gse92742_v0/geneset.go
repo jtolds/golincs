@@ -38,26 +38,28 @@ func median(vals []float32) float64 {
 	return (float64(vals[len(vals)/2-1]) + float64(vals[len(vals)/2])) / 2
 }
 
+func mean(vals []float32) (rv float64) {
+	for _, val := range vals {
+		rv += float64(val)
+	}
+	rv /= float64(len(vals))
+	return rv
+}
+
+func scale(vals []float32, weight float32) []float32 {
+	rv := make([]float32, len(vals))
+	for i, val := range vals {
+		rv[i] = val * weight
+	}
+	return rv
+}
+
 func (s *geneset) Query() ([]dbs.Dimension, error) {
-	var vectors [][]float32
+	genes := make([]dbs.Gene, 0, len(s.genes))
 	for _, gene := range s.genes {
-		if id, exists := s.ds.geneSigsByName[gene]; exists {
-			if vals, found := s.ds.genesigs.RowById(id); found {
-				vectors = append(vectors, vals)
-			}
-		}
+		genes = append(genes, dbs.Gene{Name: gene, Weight: 1})
 	}
-	rv := make([]dbs.Dimension, 0, s.ds.genesigs.Cols())
-	for i := 0; i < s.ds.genesigs.Cols(); i++ {
-		var vals []float32
-		for _, vec := range vectors {
-			vals = append(vals, vec[i])
-		}
-		rv = append(rv, dbs.Dimension{
-			Name:  s.ds.dimensionMap[i],
-			Value: median(vals)})
-	}
-	return rv, nil
+	return s.ds.CombineGenes(genes)
 }
 
 type scoredGeneset struct {
@@ -131,4 +133,26 @@ func (ds *Dataset) NearestGenesets(dims []dbs.Dimension, f dbs.ScoreFilter,
 	}
 
 	return gs_scores, nil
+}
+
+func (ds *Dataset) CombineGenes(genes []dbs.Gene) ([]dbs.Dimension, error) {
+	var vectors [][]float32
+	for _, gene := range genes {
+		if id, exists := ds.geneSigsByName[gene.Name]; exists {
+			if vals, found := ds.genesigs.RowById(id); found {
+				vectors = append(vectors, scale(vals, float32(gene.Weight)))
+			}
+		}
+	}
+	rv := make([]dbs.Dimension, 0, ds.genesigs.Cols())
+	for i := 0; i < ds.genesigs.Cols(); i++ {
+		var vals []float32
+		for _, vec := range vectors {
+			vals = append(vals, vec[i])
+		}
+		rv = append(rv, dbs.Dimension{
+			Name:  ds.dimensionMap[i],
+			Value: mean(vals)})
+	}
+	return rv, nil
 }

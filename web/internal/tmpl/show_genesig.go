@@ -9,7 +9,7 @@ var _ = T.MustParse(`{{ template "header" . }}
 <h2>Gene signature: {{.Page.genesig.Name}}</h2>
 
 <div style="text-align: right;">
-  <a class="btn btn-success"
+  <a class="btn btn-primary"
       href="/dataset/{{.Page.dataset.Id}}/search/signature?qtype=genesig&id={{.Page.genesig.Id}}">
     Search by gene signature
   </a>

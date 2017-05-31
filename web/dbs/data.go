@@ -18,6 +18,11 @@ type Dimension struct {
 	Value float64
 }
 
+type Gene struct {
+	Name   string
+	Weight float64
+}
+
 type Sample interface {
 	Id() string
 	Name() string
@@ -111,6 +116,8 @@ type Dataset interface {
 		[]ScoredGeneSig, error)
 	NearestGenesets(dims []Dimension, f ScoreFilter, offset, limit int) (
 		[]ScoredGeneset, error)
+
+	CombineGenes(genes []Gene) ([]Dimension, error)
 
 	SearchSamples(keyword string, filter SampleFilter, offset, limit int) (
 		[]ScoredSample, error)

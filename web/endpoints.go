@@ -172,6 +172,19 @@ func (a *Endpoints) Signature(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if !whparse.OptBool(r.FormValue("direct"), true) {
+		genes := make([]dbs.Gene, 0, len(dims))
+		for _, dim := range dims {
+			// This works since dim.Value is 1 or -1
+			genes = append(genes, dbs.Gene{Name: dim.Name, Weight: dim.Value})
+		}
+		var err error
+		dims, err = a.data.CombineGenes(genes)
+		if err != nil {
+			whfatal.Error(err)
+		}
+	}
+
 	offset := whparse.OptInt(r.FormValue("offset"), 0)
 	limit := whparse.OptInt(r.FormValue("limit"), defaultLimit)
 

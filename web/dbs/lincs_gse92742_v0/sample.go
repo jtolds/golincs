@@ -5,7 +5,6 @@ package lincs_gse92742_v0
 
 import (
 	"fmt"
-	"math"
 	"sort"
 
 	"github.com/jtolds/golincs/mmm"
@@ -57,50 +56,6 @@ type scoredSample struct {
 }
 
 func (s scoredSample) Score() float64 { return s.score }
-
-type minHeap []scoredSample
-
-func (h *minHeap) Len() int { return len(*h) }
-
-func (h *minHeap) Less(i, j int) bool {
-	return (*h)[i].score < (*h)[j].score
-}
-
-func (h *minHeap) Swap(i, j int) {
-	(*h)[i], (*h)[j] = (*h)[j], (*h)[i]
-}
-
-func (h *minHeap) Push(x interface{}) {
-	(*h) = append(*h, x.(scoredSample))
-}
-
-func (h *minHeap) Pop() (i interface{}) {
-	i, *h = (*h)[len(*h)-1], (*h)[:len(*h)-1]
-	return i
-}
-
-func unitCosineSimilarity(p1, p2 []float32) float64 {
-	var num float64
-	for i := range p1 {
-		num += float64(p1[i]) * float64(p2[i])
-	}
-	// the denominator is 1 if p1 and p2 are both unit vectors, which they are
-	return num
-}
-
-func normalize(vector []float32) {
-	var squared_sum float64
-	for _, val := range vector {
-		squared_sum += float64(val) * float64(val)
-	}
-	if squared_sum == 0 {
-		return
-	}
-	mag := math.Sqrt(squared_sum)
-	for i := range vector {
-		vector[i] = float32(float64(vector[i]) / mag)
-	}
-}
 
 func scoredSamplesToScoredGeneSigs(l []scoredSample) (r []dbs.ScoredGeneSig) {
 	r = make([]dbs.ScoredGeneSig, len(l))

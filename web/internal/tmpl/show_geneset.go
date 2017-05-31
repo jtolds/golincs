@@ -11,7 +11,7 @@ var _ = T.MustParse(`{{ template "header" . }}
 <p>{{.Page.geneset.Description | linkify}}</p>
 
 <div style="text-align: right;">
-  <a class="btn btn-success"
+  <a class="btn btn-primary"
       href="/dataset/{{.Page.dataset.Id}}/search/signature?qtype=geneset&id={{.Page.geneset.Id}}">
     Search by geneset
   </a>

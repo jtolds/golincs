@@ -20,7 +20,7 @@ var _ = T.MustParse(`{{ template "header" . }}
 </tr></table>
 
 <div style="text-align: right;">
-  <a class="btn btn-success"
+  <a class="btn btn-primary"
       href="/dataset/{{.Page.dataset.Id}}/search/signature?qtype=sample&id={{$Page.sample.Id}}">
     Search by sample
   </a>
