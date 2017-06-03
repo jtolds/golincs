@@ -20,6 +20,10 @@ import (
 	"github.com/spacemonkeygo/spacelog"
 )
 
+const (
+	minimumGeneSetSize = 10
+)
+
 var (
 	db = flag.String("gse92742.db_path", "/home/jt/school/bio/gse92742/db.db",
 		"path to connect to the metadata db")
@@ -159,7 +163,7 @@ func New() (*Dataset, error) {
 					cleaned = append(cleaned, gene)
 				}
 			}
-			if len(cleaned) > 0 {
+			if len(cleaned) > minimumGeneSetSize {
 				ds.genesets = append(ds.genesets, &geneset{
 					id:    len(ds.genesets),
 					name:  parts[0],
